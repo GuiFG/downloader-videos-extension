@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" minBufferTime="PT1.5S" type="static" mediaPresentationDuration="PT0H0M10S" maxSegmentDuration="PT0H0M4S" profiles="urn:mpeg:dash:profile:isoff-live:2011">
+  <!-- Video Adaptation Set -->
+  <Period>
+    <AdaptationSet mimeType="video/mp4" segmentAlignment="true" subsegmentAlignment="true" subsegmentStartsWithSAP="1">
+      <!-- 480p representation -->
+      <Representation id="video-480p" bandwidth="500000" width="854" height="480" frameRate="30">
+        <SegmentTemplate media="segment-$Number$.m4s" initialization="init.mp4" timescale="30000" duration="90000" startNumber="1">
+          <SegmentTimeline>
+            <S d="90000" />
+            <S d="90000" />
+            <S d="90000" />
+          </SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+      <!-- 720p representation -->
+      <Representation id="video-720p" bandwidth="1000000" width="1280" height="720" frameRate="30">
+        <SegmentTemplate media="segment-$Number$.m4s" initialization="init.mp4" timescale="30000" duration="90000" startNumber="1">
+          <SegmentTimeline>
+            <S d="90000" />
+            <S d="90000" />
+            <S d="90000" />
+          </SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+      <!-- 1080p representation -->
+      <Representation id="video-1080p" bandwidth="2000000" width="1920" height="1080" frameRate="30">
+        <SegmentTemplate media="segment-$Number$.m4s" initialization="init.mp4" timescale="30000" duration="90000" startNumber="1">
+          <SegmentTimeline>
+            <S d="90000" />
+            <S d="90000" />
+            <S d="90000" />
+          </SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+    </AdaptationSet>
+    
+    <!-- Audio Adaptation Set -->
+    <AdaptationSet mimeType="audio/mp4" segmentAlignment="true" subsegmentAlignment="true" subsegmentStartsWithSAP="1">
+      <!-- English audio -->
+      <Representation id="audio-en" bandwidth="128000" audioSamplingRate="48000" lang="en">
+        <SegmentTemplate media="audio-$Number$.m4s" initialization="audio-init.mp4" timescale="48000" duration="192000" startNumber="1">
+          <SegmentTimeline>
+            <S d="192000" />
+            <S d="192000" />
+            <S d="192000" />
+          </SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+      <!-- Portuguese audio -->
+      <Representation id="audio-pt" bandwidth="128000" audioSamplingRate="48000" lang="pt">
+        <SegmentTemplate media="audio-pt-$Number$.m4s" initialization="audio-init.mp4" timescale="48000" duration="192000" startNumber="1">
+          <SegmentTimeline>
+            <S d="192000" />
+            <S d="192000" />
+            <S d="192000" />
+          </SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>

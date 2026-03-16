@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Downloader</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Video Downloader</h1>
+    <div id="status" class="status">Scanning for videos...</div>
+    
+    <ul id="video-list" class="video-list">
+      <!-- Videos populated by JS -->
+    </ul>
+    
+    <progress id="progress" class="progress" max="100" value="0"></progress>
+    
+    <div class="actions">
+      <button id="refresh-btn" class="btn">Refresh</button>
+      <button id="clear-btn" class="btn btn-danger">Clear All</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

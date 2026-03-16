@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+*.log
+.DS_Store
+.env
+coverage/
+__tests__/fixtures/*.mp4
+__tests__/fixtures/*.ts

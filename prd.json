@@ -1,0 +1,241 @@
+{
+  "project": "Video Downloader Extension (TDD)",
+  "branchName": "ralph/video-downloader-phases-5-12",
+  "description": "Complete implementation of Phases 5-12: FFmpeg Concatenator, Download Manager, Service Worker, Content Script, Popup UI, E2E Tests, Simple Video Support, and Test Coverage Audit.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Implement FFmpeg Concatenator (Fase 5)",
+      "description": "As a developer, I need to implement fragment concatenation using FFmpeg.wasm with Web Worker support and progress callbacks, so that downloaded HLS/DASH segments can be combined into a valid MP4 file.",
+      "acceptanceCriteria": [
+        "Create __tests__/ffmpeg-concatenator.test.js with 6+ tests covering blob concatenation, TS/M4S support, metadata validation, and error handling",
+        "Create __tests__/mocks/ffmpeg.mock.js for FFmpeg.wasm mocking",
+        "Create src/utils/ffmpeg-concatenator.js with concatenateFragments(blobs, outputFormat) function",
+        "Lazy-load FFmpeg.wasm to minimize memory footprint",
+        "Support Web Worker for non-blocking concatenation with AbortSignal support",
+        "Implement onProgress callback reporting percentage completion",
+        "Cache FFmpeg instance for reuse between calls",
+        "All tests pass with coverage >80%",
+        "ESLint passes with no warnings",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Consolidates RED/GREEN/REFACTOR phases for FFmpeg module. Depends on existing ffmpeg dependency in package.json."
+    },
+    {
+      "id": "US-002",
+      "title": "Implement Download Manager (Fase 6)",
+      "description": "As a developer, I need to implement a download manager that integrates with chrome.downloads.download() and generates unique filenames with metadata, so that files are saved correctly to user's downloads folder.",
+      "acceptanceCriteria": [
+        "Create __tests__/download-manager.test.js with 7+ tests for blob download, filename generation, sanitization, and conflict detection",
+        "Create src/utils/download-manager.js with downloadBlob(blob, filename, options) function",
+        "Implement generateFilename(baseUrl, type, quality) returning format: video_20260316_1080p.mp4",
+        "Create sanitizeFilename(name) helper using regex to remove invalid characters",
+        "Support directory customization via chrome.storage.local with setDownloadDirectory() and getDownloadDirectory()",
+        "Add download status tracking: {downloadId, filename, status, progress, timestamp}",
+        "Implement resumption support with Range headers for partial downloads",
+        "Handle filename conflicts by appending (1), (2), etc.",
+        "Support types: 'hls', 'dash', 'simple' with appropriate metadata",
+        "All tests pass with coverage >80%",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Consolidates RED/GREEN/REFACTOR phases for Download Manager. Uses chrome.downloads API mocked in tests."
+    },
+    {
+      "id": "US-003",
+      "title": "Implement Service Worker (Fase 7)",
+      "description": "As a developer, I need to implement the Service Worker to intercept network requests and store detected video URLs with deduplication and message-based communication, so the Popup can access detected videos and trigger downloads.",
+      "acceptanceCriteria": [
+        "Create __tests__/service-worker.test.js with 7+ tests for request interception, storage, deduplication, and message handlers",
+        "Create src/background/service-worker.js with chrome.webRequest.onBeforeRequest listener",
+        "Filter requests by media extension using isMediaURL() from media-extensions.js (already implemented)",
+        "Store detected URLs in chrome.storage.local with structure: {url, type, timestamp, tabId}",
+        "Implement message handlers: GET_VIDEOS, ADD_VIDEO, CLEAR_VIDEOS, DOWNLOAD_VIDEO",
+        "Implement URL deduplication using normalized URLs (ignore query params/fragments)",
+        "Add logging with DEBUG_SERVICE_WORKER flag for troubleshooting",
+        "Broadcast updates to Popup via chrome.runtime.sendMessage() when videos detected",
+        "Integrate with hls-parser, dash-parser, fragment-downloader, ffmpeg-concatenator, download-manager modules",
+        "Load and persist videos from storage on initialization",
+        "All tests pass with coverage >80%",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "CORE functionality. Depends on US-001 (FFmpeg) and US-002 (Download Manager). Uses existing parsers from Phases 1-4."
+    },
+    {
+      "id": "US-004",
+      "title": "Implement Content Script (Fase 8)",
+      "description": "As a developer, I need to implement the Content Script to scan DOM for video elements and send discovered URLs to Service Worker, so that videos missed by network interception are captured.",
+      "acceptanceCriteria": [
+        "Create __tests__/content-script.test.js with 7+ tests for DOM scanning, deduplication, MutationObserver, and messaging",
+        "Create src/content/content-script.js with findVideoElements() function",
+        "Query document.querySelectorAll('video') for direct <video src> and <source> children",
+        "Extract src from <video> attributes or nested <source> elements",
+        "Implement deduplication of discovered URLs",
+        "Send discovered URLs to Service Worker via chrome.runtime.sendMessage({type: 'ADD_VIDEO', url, source: 'dom'})",
+        "Setup MutationObserver to detect dynamically added video elements",
+        "Support iframes (same-origin) and shadow DOM traversal",
+        "Support custom data attributes: data-video-url, data-stream-url",
+        "Debounce MutationObserver callbacks to avoid spam",
+        "Run findVideoElements() on DOMContentLoaded event",
+        "All tests pass with coverage >80%",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Depends on US-003 (Service Worker). Provides fallback detection when network interception misses videos."
+    },
+    {
+      "id": "US-005",
+      "title": "Implement Popup UI (Fase 9)",
+      "description": "As a user, I need a popup interface to view detected videos, select quality, and download them with progress tracking, so that I can easily manage video downloads from the extension icon.",
+      "acceptanceCriteria": [
+        "Create __tests__/popup.test.js with 8+ tests for video listing, download triggers, progress updates, and UI rendering",
+        "Create src/popup/popup.html with video list (ul#video-list), download buttons, clear button, progress bar, status message",
+        "Create src/popup/popup.css with responsive styling: list items, buttons, progress bar, color-coded status (green=success, red=error, gray=pending)",
+        "Create src/popup/popup.js with getVideoList(), renderVideoList(), downloadVideo() functions",
+        "Fetch video list from chrome.storage.local on popup open",
+        "Render videos with type icons (📺 HLS, 🎬 DASH, 🎞️ MP4), quality, and file size",
+        "Implement download button with type detection (HLS→parser, DASH→parser, simple→fetch)",
+        "Display real-time progress bar and status messages during downloads",
+        "Implement Clear All button to remove video list",
+        "Add filter dropdown: All | HLS | DASH | MP4",
+        "Sort videos by recency (detectedAt timestamp) with option to sort by quality",
+        "All tests pass with coverage >80%",
+        "Verify in browser using dev-browser skill",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "UI story - requires visual verification. Depends on US-003 (Service Worker). Consolidates RED/GREEN/REFACTOR phases."
+    },
+    {
+      "id": "US-006",
+      "title": "Implement E2E Integration Tests (Fase 10)",
+      "description": "As a developer, I need end-to-end tests validating the complete download pipeline from network detection to file storage, so that all components work correctly together.",
+      "acceptanceCriteria": [
+        "Create __tests__/e2e.test.js with 6+ integration tests using Puppeteer",
+        "Setup mock HTTP server (localhost:8888) with HLS, DASH, and MP4 test routes",
+        "Test complete flow: navigate → detect video → list in popup → download → file saved",
+        "Implement separate tests for HLS, DASH, and simple MP4 streams",
+        "Validate downloaded file has valid video headers and correct size",
+        "Test multiple videos on same page without race conditions",
+        "Test parallel downloads (5+ simultaneous) with proper parallelism",
+        "Verify no memory leaks during concatenation (profile memory usage)",
+        "Performance test: complete download cycle <1 minute for simulated 1GB",
+        "All components integrated: Service Worker + Content Script + Popup + download pipeline",
+        "All tests pass with coverage >80%",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Depends on US-001 through US-005. Validates complete integration before proceeding to edge cases."
+    },
+    {
+      "id": "US-007",
+      "title": "Implement Simple Video Download (Fase 11)",
+      "description": "As a developer, I need to support direct download of simple video formats (MP4, WebM, MOV) without FFmpeg processing, so that non-streaming videos can be downloaded with a simpler path.",
+      "acceptanceCriteria": [
+        "Create __tests__/simple-video-download.test.js with 6+ tests for direct video download, MIME validation, and resumption",
+        "Extend src/utils/media-extensions.js with isSimpleVideoURL() function",
+        "Add simple video types: 'video-mp4', 'video-webm', 'video-mov', 'video-flv' to MEDIA_EXTENSIONS",
+        "Extend src/utils/download-manager.js with downloadSimpleVideo(url, onProgress) function",
+        "Implement direct fetch without FFmpeg processing",
+        "Support progress reporting via onProgress({current, total, percent})",
+        "Implement 3-retry exponential backoff with 30s timeout per attempt",
+        "Validate Content-Type header contains 'video/'",
+        "Detect server support for Range headers (Accept-Ranges) for resumption",
+        "Extend src/popup/popup.js router to detect video type and route to appropriate handler",
+        "Same UI/download flow as HLS/DASH but bypassing parser and FFmpeg",
+        "All tests pass with coverage >80%",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Depends on US-002 (Download Manager). Simplifies download path for non-streaming videos."
+    },
+    {
+      "id": "US-008",
+      "title": "Audit Test Coverage (Fase 12.1)",
+      "description": "As a developer, I need to audit test coverage and add missing tests to reach >80%, so that codebase has adequate test protection.",
+      "acceptanceCriteria": [
+        "Run npm test -- --coverage to generate coverage report",
+        "Identify files and branches with coverage <80%",
+        "For each gap, identify untested code paths and write tests",
+        "Add tests for error cases, edge cases, and boundary conditions",
+        "Verify all files reach >80% lines and >75% branches coverage",
+        "Generate coverage badge/report for README.md",
+        "All tests still pass after coverage improvements",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Depends on US-001 through US-007. Audit task to ensure test quality."
+    },
+    {
+      "id": "US-009",
+      "title": "Create Testing Documentation (Fase 12.2)",
+      "description": "As a developer or contributor, I need clear documentation on running and understanding tests, so that future work can follow established testing patterns.",
+      "acceptanceCriteria": [
+        "Create TESTING.md with sections: how to run tests, test structure, fixtures guide, mocks patterns, debugging",
+        "Document each test suite: media-extensions, hls-parser, dash-parser, fragment-downloader, ffmpeg-concatenator, download-manager, service-worker, content-script, popup, e2e, simple-video",
+        "Explain fixture structure and available test data in __tests__/fixtures/",
+        "Explain mock patterns used in __tests__/mocks/chrome-api.js",
+        "Provide debugging tips: --verbose, --testNamePattern, node --inspect-brk",
+        "Include example test case structure",
+        "Update README.md with link to TESTING.md",
+        "Verify documentation is clear and complete",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Depends on US-001 through US-007. Documentation task for maintainability."
+    },
+    {
+      "id": "US-010",
+      "title": "Performance Verification (Fase 12.3)",
+      "description": "As a developer, I need to measure and optimize build size, startup latency, parser performance, and memory usage, so that the extension meets performance targets.",
+      "acceptanceCriteria": [
+        "Run npm run build and measure output size: service-worker.js, content-script.js, popup.js",
+        "Verify FFmpeg.wasm lazy-loads (~30MB separate from main bundles)",
+        "Verify total build <100MB",
+        "Profile Service Worker startup: should be <500ms",
+        "Profile HLS parser: 1000-segment playlist <100ms",
+        "Profile DASH parser: complex MPD <200ms",
+        "Profile FFmpeg concatenation: peak memory <500MB for large files",
+        "Optimize bundle with tree-shaking and minification (webpack already handles production)",
+        "Profile extension memory footprint at idle and during download",
+        "Document performance metrics in README.md Performance section",
+        "All tests still pass after optimization",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Depends on US-001 through US-007. Performance validation task."
+    },
+    {
+      "id": "US-011",
+      "title": "Final Code Polish & Documentation (Fase 12.4)",
+      "description": "As a developer, I need to polish code quality, ensure consistent naming, verify ESLint compliance, and complete project documentation, so that the codebase is production-ready.",
+      "acceptanceCriteria": [
+        "Run npm run lint and verify zero ESLint violations and zero warnings",
+        "Verify all filenames are descriptive: hls-parser.js (not parser.js), ffmpeg-concatenator.js (not concat.js)",
+        "Verify all function names are descriptive: parseHLS(), parseDALE(), downloadFragments(), etc.",
+        "Verify variable names are descriptive: mediaUrl, fragmentBlobs, downloadProgress (not url, blobs, progress)",
+        "Review comments: explain 'why' not 'what', remove obvious comments, keep only high-value explanations",
+        "Update README.md with: setup instructions, test commands, architecture overview (3 components), tech stack, performance benchmarks, known limitations",
+        "Verify all console.log and debug code is removed or gated behind DEBUG flags",
+        "Final commit: 'docs(project): final polish and documentation'",
+        "All tests still pass",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "Final task. Consolidates polish phase. Depends on US-001 through US-010."
+    }
+  ]
+}
