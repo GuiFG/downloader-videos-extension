@@ -1,13 +1,14 @@
 {
   "id": "213c00ba-3786-4a2c-b388-5fc2d20c5ce3",
-  "status": "running",
+  "status": "completed",
   "startedAt": "2026-03-17T00:32:33.935Z",
-  "updatedAt": "2026-03-17T09:16:04.698Z",
+  "updatedAt": "2026-03-17T11:19:08.694Z",
   "agentPlugin": "claude",
   "trackerPlugin": "json",
-  "currentIteration": 10,
+  "currentIteration": 11,
   "maxIterations": 11,
   "totalTasks": 0,
-  "tasksCompleted": 10,
-  "cwd": "/workspaces/downloader"
+  "tasksCompleted": 11,
+  "cwd": "/workspaces/downloader",
+  "endedAt": "2026-03-17T11:19:08.694Z"
 }
