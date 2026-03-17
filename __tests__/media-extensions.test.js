@@ -850,4 +850,93 @@ describe('Media Extensions', () => {
       });
     });
   });
+
+  describe('Debug logging integration', () => {
+    let originalEnv;
+    let consoleLogSpy;
+
+    beforeEach(() => {
+      originalEnv = process.env.DEBUG_VIDEO_DETECTION;
+      consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      process.env.DEBUG_VIDEO_DETECTION = originalEnv;
+      consoleLogSpy.mockRestore();
+      jest.resetModules();
+    });
+
+    test('should not log when DEBUG_VIDEO_DETECTION is disabled', () => {
+      process.env.DEBUG_VIDEO_DETECTION = 'false';
+      jest.resetModules();
+      // Re-import to get fresh modules with updated env
+      const mod = require('../src/utils/media-extensions');
+
+      mod.detectMediaTypeByPattern('https://googlevideo.com/video');
+
+      expect(consoleLogSpy).not.toHaveBeenCalled();
+    });
+
+    test('should log pattern detection when DEBUG_VIDEO_DETECTION is enabled', () => {
+      process.env.DEBUG_VIDEO_DETECTION = 'true';
+      jest.resetModules();
+      const mod = require('../src/utils/media-extensions');
+
+      mod.detectMediaTypeByPattern('https://googlevideo.com/video');
+
+      expect(consoleLogSpy).toHaveBeenCalled();
+      const calls = consoleLogSpy.mock.calls;
+      expect(calls[0][0]).toContain('Pattern detection');
+    });
+
+    test('should log Content-Type detection when DEBUG_VIDEO_DETECTION is enabled', () => {
+      process.env.DEBUG_VIDEO_DETECTION = 'true';
+      jest.resetModules();
+      const mod = require('../src/utils/media-extensions');
+
+      mod.detectMediaTypeByContentType('video/mp4');
+
+      expect(consoleLogSpy).toHaveBeenCalled();
+      const calls = consoleLogSpy.mock.calls;
+      expect(calls[0][0]).toContain('Content-Type detection');
+    });
+
+    test('should include detection method in log output', () => {
+      process.env.DEBUG_VIDEO_DETECTION = 'true';
+      jest.resetModules();
+      const mod = require('../src/utils/media-extensions');
+
+      mod.detectMediaTypeByPattern('https://vimeo.com/video/123');
+
+      expect(consoleLogSpy).toHaveBeenCalled();
+      const output = consoleLogSpy.mock.calls[0];
+      expect(output[0]).toContain('matched');
+    });
+
+    test('should log failure reasons when detection fails', () => {
+      process.env.DEBUG_VIDEO_DETECTION = 'true';
+      jest.resetModules();
+      const mod = require('../src/utils/media-extensions');
+
+      mod.detectMediaTypeByPattern('https://example.com/unknown');
+
+      expect(consoleLogSpy).toHaveBeenCalled();
+      const output = consoleLogSpy.mock.calls[0];
+      expect(output[0]).toContain('no match');
+    });
+
+    test('should handle debug logging for invalid inputs gracefully', () => {
+      process.env.DEBUG_VIDEO_DETECTION = 'true';
+      jest.resetModules();
+      const mod = require('../src/utils/media-extensions');
+
+      // Should not throw even with invalid input
+      expect(() => {
+        mod.detectMediaTypeByPattern(null);
+        mod.detectMediaTypeByContentType(undefined);
+      }).not.toThrow();
+
+      expect(consoleLogSpy).toHaveBeenCalled();
+    });
+  });
 });

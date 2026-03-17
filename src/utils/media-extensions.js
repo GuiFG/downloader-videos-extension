@@ -7,7 +7,10 @@
  * - Limpar URLs (remover query params e fragmentos)
  * - Manter lista de extensões conhecidas
  * - Detectar padrões de URL para plataformas de streaming
+ * - Registrar tentativas de detecção em debug mode
  */
+
+import { logDebug, isDebugEnabled } from './debug-logger.js';
 
 /**
  * Extensões de mídia suportadas organizadas por tipo
@@ -49,7 +52,12 @@ Object.entries(MEDIA_EXTENSIONS).forEach(([type, exts]) => {
  * @returns {string|null} Tipo de mídia ('stream', etc) ou null se não corresponder a nenhum padrão
  */
 export function detectMediaTypeByPattern(url) {
-  if (!url || typeof url !== 'string') return null;
+  if (!url || typeof url !== 'string') {
+    if (isDebugEnabled()) {
+      logDebug('Pattern detection: invalid input', { url }, 'media-extensions');
+    }
+    return null;
+  }
 
   // Remove query params e fragmentos para análise
   const cleanedUrl = url.split('?')[0].split('#')[0];
@@ -58,11 +66,17 @@ export function detectMediaTypeByPattern(url) {
   for (const [type, patterns] of Object.entries(URL_PATTERNS)) {
     for (const pattern of patterns) {
       if (pattern.test(cleanedUrl)) {
+        if (isDebugEnabled()) {
+          logDebug('Pattern detection: matched', { url, type, pattern: pattern.source }, 'media-extensions');
+        }
         return type;
       }
     }
   }
 
+  if (isDebugEnabled()) {
+    logDebug('Pattern detection: no match', { url }, 'media-extensions');
+  }
   return null;
 }
 
@@ -72,7 +86,12 @@ export function detectMediaTypeByPattern(url) {
  * @returns {string|null} Tipo de mídia ('video', 'stream', 'audio') ou null se não for mídia
  */
 export function detectMediaTypeByContentType(contentType) {
-  if (!contentType || typeof contentType !== 'string') return null;
+  if (!contentType || typeof contentType !== 'string') {
+    if (isDebugEnabled()) {
+      logDebug('Content-Type detection: invalid input', { contentType }, 'media-extensions');
+    }
+    return null;
+  }
 
   // Extrai o MIME type antes de qualquer parâmetro (ex: "video/mp4; charset=utf-8")
   const mimeType = contentType.split(';')[0].trim().toLowerCase();
@@ -80,14 +99,23 @@ export function detectMediaTypeByContentType(contentType) {
   // Detecta tipos de vídeo
   if (mimeType.startsWith('video/')) {
     // Qualquer tipo video/* é considerado uma stream detectada por header
+    if (isDebugEnabled()) {
+      logDebug('Content-Type detection: matched video', { contentType, mimeType }, 'media-extensions');
+    }
     return 'stream';
   }
 
   // Detecta tipos de áudio
   if (mimeType.startsWith('audio/')) {
+    if (isDebugEnabled()) {
+      logDebug('Content-Type detection: matched audio', { contentType, mimeType }, 'media-extensions');
+    }
     return 'audio';
   }
 
+  if (isDebugEnabled()) {
+    logDebug('Content-Type detection: no match', { contentType, mimeType }, 'media-extensions');
+  }
   return null;
 }
 
