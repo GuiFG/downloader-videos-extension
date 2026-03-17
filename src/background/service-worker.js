@@ -10,7 +10,7 @@
  * - Gerenciar downloads
  */
 
-import { isMediaURL, getMediaType } from '../utils/media-extensions.js';
+import { isMediaURL, getMediaType, detectMediaTypeByContentType, detectMediaTypeByPattern } from '../utils/media-extensions.js';
 import { downloadFragments } from '../utils/fragment-downloader.js';
 import { parseHLS } from '../utils/hls-parser.js';
 import { parseDALE } from '../utils/dash-parser.js';
@@ -19,6 +19,12 @@ import {
   downloadBlob,
   generateFilename,
 } from '../utils/download-manager.js';
+import {
+  logDetectionAttempt,
+  logDetectionSuccess,
+  logDetectionFailure,
+  isDebugEnabled,
+} from '../utils/debug-logger.js';
 
 // Debug flag for logging
 const DEBUG_SERVICE_WORKER = process.env.DEBUG_SERVICE_WORKER === 'true';
@@ -56,26 +62,88 @@ export function normalizeUrl(url) {
 
 /**
  * Detect if a URL is a video and classify it
+ * Checks in order: extension → URL pattern → Content-Type
  * @param {string} url - URL to check
  * @param {number} tabId - ID of the tab that made the request
+ * @param {string|null} contentType - Optional Content-Type header value
  * @returns {object|null} Video object or null if not a media URL
  */
-export function detectVideoUrl(url, tabId) {
-  if (!isMediaURL(url)) {
+export function detectVideoUrl(url, tabId, contentType = null) {
+  let type = null;
+  let detectionMethod = null;
+  const attempts = {};
+
+  // First, try extension-based detection
+  const isMedia = isMediaURL(url);
+  if (isMedia) {
+    type = getMediaType(url);
+    if (type !== 'unknown') {
+      detectionMethod = 'extension';
+      attempts.extension = { matched: true };
+    } else {
+      attempts.extension = { matched: false, reason: 'extension found but type is unknown' };
+    }
+  } else {
+    attempts.extension = { matched: false, reason: 'no media extension found' };
+  }
+
+  // If no extension match, try URL pattern detection
+  if (type === null || type === 'unknown') {
+    const patternType = detectMediaTypeByPattern(url);
+    if (patternType) {
+      type = patternType;
+      detectionMethod = 'pattern';
+      attempts.pattern = { matched: true };
+    } else {
+      attempts.pattern = { matched: false, reason: 'URL does not match any streaming platform pattern' };
+    }
+  }
+
+  // If still not detected and Content-Type provided, try Content-Type detection
+  if ((type === null || type === 'unknown') && contentType) {
+    const contentTypeDetection = detectMediaTypeByContentType(contentType);
+    if (contentTypeDetection) {
+      type = contentTypeDetection;
+      detectionMethod = 'content-type';
+      attempts.contentType = { matched: true };
+    } else {
+      attempts.contentType = { matched: false, reason: 'Content-Type is not a media type' };
+    }
+  } else if (contentType === null) {
+    attempts.contentType = { matched: false, reason: 'Content-Type header not provided' };
+  }
+
+  // Log detection attempts
+  if (isDebugEnabled()) {
+    logDetectionAttempt(url, 'service-worker', attempts);
+  }
+
+  // Return null if no detection method found a match
+  if (type === null || type === 'unknown') {
+    if (isDebugEnabled()) {
+      logDetectionFailure(url, 'service-worker', 'no detection method matched');
+    }
     return null;
   }
 
-  const type = getMediaType(url);
-  if (type === 'unknown') {
-    return null;
-  }
-
-  return {
+  const video = {
     url,
     type,
     tabId,
     timestamp: Date.now(),
   };
+
+  // Attach detection method for tracking
+  if (detectionMethod) {
+    video.detectionMethod = detectionMethod;
+  }
+
+  // Log successful detection
+  if (isDebugEnabled()) {
+    logDetectionSuccess(url, type, detectionMethod, 'service-worker');
+  }
+
+  return video;
 }
 
 /**
@@ -402,6 +470,46 @@ function onBeforeRequest(details) {
 }
 
 /**
+ * Handle response headers inspection
+ * @param {object} details - Request details including response headers
+ * @returns {object} Empty object (no blocking)
+ */
+function onHeadersReceived(details) {
+  const { url, tabId, responseHeaders } = details;
+
+  // Check if video already detected
+  const alreadyDetected = findVideoByNormalizedUrl(url) >= 0;
+  if (alreadyDetected) {
+    return {};
+  }
+
+  // Check Content-Type header
+  if (!responseHeaders) {
+    return {};
+  }
+
+  const contentTypeHeader = responseHeaders.find(
+    header => header.name.toLowerCase() === 'content-type'
+  );
+
+  if (!contentTypeHeader) {
+    return {};
+  }
+
+  // Use detectVideoUrl with Content-Type to try all detection methods
+  const video = detectVideoUrl(url, tabId, contentTypeHeader.value);
+  if (video) {
+    log('Video detected by headers inspection', { url, type: video.type, detectionMethod: video.detectionMethod });
+    addVideoToCollection(video);
+    // Save and broadcast immediately
+    saveVideos();
+    broadcastUpdate({ type: 'VIDEOS_UPDATED', videos: detectedVideos });
+  }
+
+  return {};
+}
+
+/**
  * Initialize the service worker
  */
 export async function initializeServiceWorker() {
@@ -416,6 +524,13 @@ export async function initializeServiceWorker() {
     onBeforeRequest,
     { urls: ['<all_urls>'] },
     []
+  );
+
+  // Register response headers inspector for Content-Type detection
+  chrome.webRequest.onHeadersReceived.addListener(
+    onHeadersReceived,
+    { urls: ['<all_urls>'] },
+    ['responseHeaders']
   );
 
   // Register message handler

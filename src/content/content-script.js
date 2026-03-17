@@ -10,10 +10,11 @@
  * - Detectar vídeos adicionados dinamicamente
  */
 
-import { isMediaURL, cleanUrl } from '../utils/media-extensions.js';
+import { isMediaURL, cleanUrl, getMediaType } from '../utils/media-extensions.js';
+import { logDebug, logDetectionSuccess, isDebugEnabled } from '../utils/debug-logger.js';
 
 // Debug flag
-const DEBUG_CONTENT_SCRIPT = false;
+const DEBUG_CONTENT_SCRIPT = process.env.DEBUG_CONTENT_SCRIPT === 'true';
 
 /**
  * Log utility for debugging
@@ -114,15 +115,23 @@ export function findVideoElements() {
       const normalizedUrl = cleanUrl(url);
       if (normalizedUrl && !seenUrls.has(normalizedUrl)) {
         seenUrls.add(normalizedUrl);
+        const type = getMediaType(url);
         discoveredVideos.push({
           url,
           source: 'dom',
         });
+        // Log successful DOM discovery
+        if (isDebugEnabled()) {
+          logDetectionSuccess(url, type, 'dom-scan', 'content-script');
+        }
       }
     }
   });
 
   log('Found videos:', discoveredVideos);
+  if (isDebugEnabled()) {
+    logDebug('DOM scan completed', { count: discoveredVideos.length }, 'content-script');
+  }
   return discoveredVideos;
 }
 
@@ -130,7 +139,12 @@ export function findVideoElements() {
  * Sends discovered videos to the Service Worker
  */
 async function sendVideosToServiceWorker(videos) {
-  if (videos.length === 0) return;
+  if (videos.length === 0) {
+    if (isDebugEnabled()) {
+      logDebug('No videos to send to service worker', {}, 'content-script');
+    }
+    return;
+  }
 
   for (const video of videos) {
     try {
@@ -140,8 +154,14 @@ async function sendVideosToServiceWorker(videos) {
         source: video.source,
       });
       log('Sent video to service worker:', video.url);
+      if (isDebugEnabled()) {
+        logDebug('Video sent to service worker', { url: video.url, source: video.source }, 'content-script');
+      }
     } catch (error) {
       log('Error sending video to service worker:', error);
+      if (isDebugEnabled()) {
+        logDebug('Error sending video to service worker', { url: video.url, error: error.message }, 'content-script');
+      }
     }
   }
 }

@@ -36,6 +36,9 @@ global.chrome = {
     onBeforeRequest: {
       addListener: jest.fn(),
     },
+    onHeadersReceived: {
+      addListener: jest.fn(),
+    },
     onResponseStarted: {
       addListener: jest.fn(),
     },
