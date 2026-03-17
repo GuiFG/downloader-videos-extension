@@ -12,6 +12,58 @@ after each iteration and it's included in prompts for context.
 - **AbortSignal pattern**: Check `signal?.aborted` at multiple points; throw `DOMException('...', 'AbortError')` for abort cases
 - **Validation helpers**: Extract validation logic into separate functions (e.g., `validateFragments()`) for reusability
 
+### Chrome API Message Pattern
+- **Message handling**: Use `handleMessage(message, sender)` returning Promise with consistent response structure
+- **Storage operations**: Wrap chrome.storage.local callbacks in Promises for async/await compatibility
+- **Broadcasting**: Use `chrome.tabs.query()` then `chrome.tabs.sendMessage()` to notify all tabs of updates
+- **Request interception**: Register chrome.webRequest.onBeforeRequest listener for network monitoring
+- **Deduplication strategy**: Normalize URLs (remove query params/fragments) for comparison, preserve tab/timestamp context
+
+---
+
+## [2026-03-17] - US-003 (Service Worker)
+
+### What was implemented
+- Complete Service Worker module for network request interception and video URL detection
+- 54 comprehensive tests covering:
+  - URL normalization and deduplication for query params/fragments
+  - Video URL detection and classification (HLS, DASH, MP4, stream segments)
+  - Message handler implementation (GET_VIDEOS, ADD_VIDEO, CLEAR_VIDEOS, DOWNLOAD_VIDEO)
+  - Chrome storage integration and persistence
+  - Video broadcasting to all extension components
+  - Download functionality for HLS/DASH/simple videos
+  - Error handling and edge cases
+  - Network request interception simulation
+
+### Files changed
+- **Created**: `src/background/service-worker.js` - Service Worker with 13 exported functions
+- **Created**: `__tests__/service-worker.test.js` - 54 comprehensive tests (all passing)
+
+### Acceptance Criteria Status
+✅ All acceptance criteria met:
+- 54 tests (>7 required) covering request interception, storage, deduplication, message handlers
+- chrome.webRequest.onBeforeRequest listener with media URL filtering
+- Storage structure: {url, type, timestamp, tabId}
+- Message handlers: GET_VIDEOS, ADD_VIDEO, CLEAR_VIDEOS, DOWNLOAD_VIDEO all implemented
+- URL deduplication using normalized URLs (cleanUrl)
+- DEBUG_SERVICE_WORKER flag for logging
+- Broadcasting via chrome.tabs.query() + chrome.tabs.sendMessage()
+- Integration mocks with hls-parser, dash-parser, fragment-downloader, ffmpeg-concatenator, download-manager
+- Initialization loads and persists videos from chrome.storage.local
+- Test coverage: **84.56%** statements, **79.71%** branches, **78.78%** functions, **84.07%** lines
+- **ESLint**: No errors on service-worker files
+- All 242 tests across all modules **PASS**
+
+### Learnings
+- **URL normalization**: Parse full URL objects for case-insensitive domain comparison while preserving path structure
+- **Chrome message protocol**: All chrome.storage operations must wrap callbacks in Promises for async/await
+- **Deduplication accuracy**: Normalize both sides of URL comparison for consistent deduplication across different query param variations
+- **Mock strategy for service worker**: Mock both utility modules AND the global chrome API to test in isolation
+- **Error handling patterns**: Check conditions early before logging/processing to avoid null reference errors
+- **Broadcasting strategy**: Query tabs first, then send messages with error handling (tabs without content script fail gracefully)
+- **Stream reading pattern**: Use reader.getReader() with explicit releaseLock() in finally block for proper cleanup
+- **Fragment type detection**: Fetch manifest content, parse for segment URLs, then download with parallel fetching (6 parallel max)
+
 ---
 
 ## [2026-03-17] - US-002 (Download Manager)

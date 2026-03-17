@@ -65,8 +65,9 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "CORE functionality. Depends on US-001 (FFmpeg) and US-002 (Download Manager). Uses existing parsers from Phases 1-4."
+      "passes": true,
+      "notes": "CORE functionality. Depends on US-001 (FFmpeg) and US-002 (Download Manager). Uses existing parsers from Phases 1-4.",
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-004",
@@ -241,6 +242,6 @@
     }
   ],
   "metadata": {
-    "updatedAt": "2026-03-17T00:43:18.382Z"
+    "updatedAt": "2026-03-17T01:05:21.607Z"
   }
 }
