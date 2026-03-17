@@ -21,6 +21,57 @@ after each iteration and it's included in prompts for context.
 
 ---
 
+## [2026-03-17] - US-004 (Content Script)
+
+### What was implemented
+- Complete Content Script module for scanning DOM, detecting dynamically added video elements, and communicating with Service Worker
+- 19 comprehensive tests covering:
+  - Direct and nested video element detection
+  - URL deduplication with query parameter handling
+  - MutationObserver for dynamic video discovery
+  - Message passing to Service Worker
+  - iframe traversal (same-origin)
+  - Shadow DOM traversal
+  - Custom data attributes (data-video-url, data-stream-url)
+  - Debouncing of observer callbacks
+  - DOMContentLoaded event handling
+  - URL validation and filtering
+
+### Files changed
+- **Created**: `src/content/content-script.js` - Content Script with 2 exported functions
+- **Created**: `__tests__/content-script.test.js` - 19 comprehensive tests (all passing)
+
+### Acceptance Criteria Status
+✅ All acceptance criteria met:
+- 19 tests (>7 required) covering DOM scanning, deduplication, MutationObserver, messaging, iframes, shadow DOM
+- `findVideoElements()` function scans DOM for <video> elements and extracts URLs
+- Query `document.querySelectorAll('video')` for direct <video src> and <source> children
+- Extract src from <video> attributes and nested <source> elements
+- Deduplication of discovered URLs using normalized URL comparison
+- Message sending via `chrome.runtime.sendMessage({type: 'ADD_VIDEO', url, source: 'dom'})`
+- MutationObserver set up for dynamically added video elements
+- iframe traversal with same-origin support and error handling for cross-origin
+- shadow DOM traversal using element.shadowRoot recursion
+- Custom data attributes support: data-video-url, data-stream-url
+- Debounced MutationObserver callbacks (100ms debounce) to avoid spam
+- findVideoElements() called on DOMContentLoaded event
+- Auto-initialization on script load
+- Test coverage: **88.73%** statements, **88.57%** lines, **75%** branches, **93.33%** functions
+- **ESLint**: No errors on content-script files
+- All 280 tests across all modules **PASS** (261 existing + 19 new)
+
+### Learnings
+- **DOM traversal**: Use recursive function to traverse both shadow DOM and regular DOM efficiently
+- **URL deduplication**: Use Set with normalized URLs to prevent duplicates while preserving original URL in result
+- **Debouncing MutationObserver**: Critical to avoid spam from multiple mutations - 100ms debounce works well
+- **Message pattern consistency**: Match Service Worker's message format {type, url, source} for seamless integration
+- **Error handling for iframes**: Try-catch around contentDocument access handles cross-origin iframes gracefully
+- **Shadow DOM traversal**: Check element.shadowRoot on all elements to recursively traverse nested shadow trees
+- **Data attributes flexibility**: Supporting custom data-video-url and data-stream-url allows flexibility for non-standard implementations
+- **Auto-initialization**: Auto-calling initContentScript() on module load ensures setup happens even if caller forgets
+
+---
+
 ## [2026-03-17] - US-003 (Service Worker)
 
 ### What was implemented
