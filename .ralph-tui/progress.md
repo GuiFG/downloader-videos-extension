@@ -341,3 +341,64 @@ after each iteration and it's included in prompts for context.
 - **AbortSignal placement**: Checking abort status after every async operation prevents dangling promises
 
 ---
+
+## [2026-03-17] - US-007 (Implement Simple Video Download)
+
+### What was implemented
+- Complete Simple Video Download module for handling direct download of non-streaming video files
+- Comprehensive test suite with 20 tests specifically for simple video download functionality
+- Support for direct video file download (MP4, WebM, MOV, FLV) without FFmpeg processing
+- Full implementation of retry logic with exponential backoff and timeout handling
+- Progress reporting with {current, total, percent} callback format
+- Content-Type validation for video/* MIME types
+- Accept-Ranges header detection for resumption support
+- Routing in Service Worker to handle 'video' type downloads appropriately
+
+### Files changed
+- **Created**: `__tests__/simple-video-download.test.js` - 20 comprehensive tests (all passing)
+- **Already existed**: `src/utils/download-manager.js` - downloadSimpleVideo() implementation
+- **Already existed**: `src/utils/media-extensions.js` - isSimpleVideoURL() and MEDIA_EXTENSIONS definitions
+- **Already existed**: `src/background/service-worker.js` - Routes to downloadSimpleVideo() for 'video' type
+- **Already existed**: `src/popup/popup.js` - UI handler for video downloads
+
+### Acceptance Criteria Status
+✅ All acceptance criteria met:
+- 20 tests (>6 required) for direct video download, MIME validation, and resumption
+- `isSimpleVideoURL()` function validates simple video URLs
+- Simple video types included: 'video-mp4', 'video-webm', 'video-mov', 'video-flv' (as extensions in MEDIA_EXTENSIONS)
+- `downloadSimpleVideo(url, onProgress)` function fully implemented
+- Direct fetch without FFmpeg processing ✓
+- Progress reporting: `{current, total, percent}` format ✓
+- 3-retry exponential backoff: 1s, 2s, 4s delays + 30s timeout per attempt ✓
+- Content-Type validation requires 'video/*' ✓
+- Accept-Ranges header detection for resumption support ✓
+- Service Worker routes to appropriate handler based on video.type ✓
+- Same UI/download flow as HLS/DASH (via handleDownloadClick in popup.js) ✓
+- Test coverage: **83.34%** statements, **83.84%** lines, **83.79%** functions
+- **ESLint**: Clean (only 1 pre-existing warning in hls-parser.test.js)
+- All 331 tests pass (311 existing + 20 new)
+
+### Test Coverage Details
+The new simple-video-download.test.js includes comprehensive tests:
+- **Direct video download** (3 tests): MP4, WebM, MOV file handling
+- **MIME type validation** (4 tests): Validates video/*, rejects non-video types, accepts all video/* formats
+- **Resume support** (3 tests): Accept-Ranges header detection, servers without range support
+- **Progress reporting** (3 tests): Callback invocation, correct {current, total, percent} format, 100% completion
+- **Retry logic** (3 tests): 3-retry mechanism, exponential backoff timing, failure after max retries
+- **Error handling** (3 tests): HTTP error responses, server errors, network timeouts
+- **Content-Length handling** (2 tests): Missing content-length headers, accurate progress percentages
+
+### Learnings
+- **Simple video module completeness**: downloadSimpleVideo() was already fully implemented in US-002 (Download Manager) with all required features - retry logic, timeout, Content-Type validation, progress reporting
+- **Test file organization**: Created dedicated simple-video-download.test.js test file even though the implementation is in download-manager.js, following acceptance criteria
+- **Progress callback pattern**: Consistent {current, total, percent} format works well across all download types (HLS, DASH, simple)
+- **Retry mechanism robustness**: Exponential backoff (1s, 2s, 4s) combined with 30s timeout per attempt provides good resilience for network issues
+- **MIME type validation**: Checking Content-Type header.startsWith('video/') is simple and effective
+
+### Patterns Added to Codebase
+- **Direct Download Pattern**: For simple video files, use fetch() with streaming reader and chunk collection instead of FFmpeg pipeline
+- **Progress Callback Pattern**: All download operations use consistent {current, total, percent} format for UI progress updates
+- **Retry with Backoff Pattern**: Use exponential backoff with configurable base delay (1000ms) and timeout wrapper for network resilience
+- **Content Validation Pattern**: Validate Content-Type header early before processing to fail fast on incorrect mime types
+
+---
