@@ -52,7 +52,14 @@ Webpack 5 produces three bundles in `dist/`: `service-worker.js`, `content-scrip
 
 ### Implementation Status
 
-Utilities (`media-extensions`, `hls-parser`, `dash-parser`, `fragment-downloader`) are fully implemented and tested. The three extension components (`service-worker.js`, `content-script.js`, `popup.js`) contain only TODO stubs — these follow the TDD phases defined in `tasks.md`.
+✅ **Fully implemented and tested:**
+
+- **Utilities** — `media-extensions`, `hls-parser`, `dash-parser`, `fragment-downloader`
+- **Service Worker** — Intercepts network requests, detects HLS/DASH/MP4 streams, manages downloads with FFmpeg concatenation
+- **Content Script** — Scans DOM and iframes for video elements, supports Shadow DOM traversal, debounced MutationObserver for dynamic content
+- **Popup UI** — Lists detected videos with filters (by type), sort options (by recency), download progress tracking, refresh and clear actions
+- **Download Manager** — Handles fragment downloads with up to 6 parallel fetches, retry logic, and FFmpeg-based concatenation
+- **FFmpeg Concatenator** — WASM-based in-browser video processing for seamless segment concatenation
 
 ### Key Dependency
 
