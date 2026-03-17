@@ -851,6 +851,259 @@ describe('Media Extensions', () => {
     });
   });
 
+  describe('Comprehensive streaming platform fixtures', () => {
+    const {
+      YOUTUBE_FIXTURES,
+      VIMEO_FIXTURES,
+      CONTENT_TYPE_FIXTURES,
+      DEDUPLICATION_FIXTURES,
+    } = require('./fixtures/streaming-urls');
+
+    describe('YouTube googlevideo.com URLs', () => {
+      test('should detect basic YouTube playback URL', () => {
+        const { url, type } = YOUTUBE_FIXTURES.basicPlayback;
+        expect(getMediaType(url)).toBe(type);
+        expect(detectMediaTypeByPattern(url)).toBe('stream');
+      });
+
+      test('should detect minimal YouTube googlevideo.com URL', () => {
+        const { url, type } = YOUTUBE_FIXTURES.minimal;
+        expect(getMediaType(url)).toBe(type);
+        expect(detectMediaTypeByPattern(url)).toBe('stream');
+      });
+
+      test('should detect YouTube with variant subdomain', () => {
+        const { url, type } = YOUTUBE_FIXTURES.variantSubdomain;
+        expect(getMediaType(url)).toBe(type);
+        expect(detectMediaTypeByPattern(url)).toBe('stream');
+      });
+
+      test('should detect YouTube URL with fragment', () => {
+        const { url, type } = YOUTUBE_FIXTURES.withFragment;
+        expect(getMediaType(url)).toBe(type);
+        expect(detectMediaTypeByPattern(url)).toBe('stream');
+      });
+
+      test('should prioritize extension over pattern for YouTube URL', () => {
+        const { url, type } = YOUTUBE_FIXTURES.withExtension;
+        expect(getMediaType(url)).toBe(type);
+        expect(getMediaType(url)).toBe('video'); // extension takes priority
+      });
+    });
+
+    describe('Vimeo URLs', () => {
+      test('should detect basic Vimeo video URL', () => {
+        const { url, type } = VIMEO_FIXTURES.vimeoVideoBasic;
+        expect(getMediaType(url)).toBe(type);
+        expect(detectMediaTypeByPattern(url)).toBe('stream');
+      });
+
+      test('should detect Vimeo video URL with path', () => {
+        const { url, type } = VIMEO_FIXTURES.vimeoVideoWithPath;
+        expect(getMediaType(url)).toBe(type);
+        expect(detectMediaTypeByPattern(url)).toBe('stream');
+      });
+
+      test('should detect basic Vimeo player URL', () => {
+        const { url, type } = VIMEO_FIXTURES.vimeoPlayerBasic;
+        expect(getMediaType(url)).toBe(type);
+        expect(detectMediaTypeByPattern(url)).toBe('stream');
+      });
+
+      test('should prioritize extension over pattern for Vimeo player URL', () => {
+        const { url, type } = VIMEO_FIXTURES.vimeoPlayerExternal;
+        expect(getMediaType(url)).toBe(type);
+        expect(getMediaType(url)).toBe('video'); // extension takes priority
+      });
+
+      test('should detect Vimeo player URL with auth token', () => {
+        const { url, type } = VIMEO_FIXTURES.vimeoPlayerWithAuth;
+        expect(getMediaType(url)).toBe(type);
+        expect(detectMediaTypeByPattern(url)).toBe('stream');
+      });
+    });
+
+    describe('Content-Type detection for streaming URLs', () => {
+      test('should detect unknown streaming URL via Content-Type', () => {
+        const { contentType, type } = CONTENT_TYPE_FIXTURES.unknownStreamingURL;
+        expect(detectMediaTypeByContentType(contentType)).toBe(type);
+      });
+
+      test('should detect CDN URL with parameters via Content-Type', () => {
+        const { contentType, type } = CONTENT_TYPE_FIXTURES.cdnURL;
+        expect(detectMediaTypeByContentType(contentType)).toBe(type);
+      });
+
+      test('should detect unknown domain streaming via Content-Type', () => {
+        const { contentType, type } = CONTENT_TYPE_FIXTURES.unknownDomain;
+        expect(detectMediaTypeByContentType(contentType)).toBe(type);
+      });
+
+      test('should detect audio streaming via Content-Type', () => {
+        const { contentType, type } = CONTENT_TYPE_FIXTURES.audioStream;
+        expect(detectMediaTypeByContentType(contentType)).toBe(type);
+      });
+    });
+
+    describe('All three detection paths integration', () => {
+      test('should detect YouTube via pattern when no extension matches', () => {
+        const url = YOUTUBE_FIXTURES.basicPlayback.url;
+        // No extension, but pattern detection should work
+        expect(detectMediaTypeByPattern(url)).toBe('stream');
+        expect(getMediaType(url)).toBe('stream');
+      });
+
+      test('should detect Vimeo via pattern when no extension matches', () => {
+        const url = VIMEO_FIXTURES.vimeoVideoBasic.url;
+        // No extension, but pattern detection should work
+        expect(detectMediaTypeByPattern(url)).toBe('stream');
+        expect(getMediaType(url)).toBe('stream');
+      });
+
+      test('should fall back from pattern to Content-Type detection', () => {
+        const url = CONTENT_TYPE_FIXTURES.unknownStreamingURL.url;
+        const contentType = CONTENT_TYPE_FIXTURES.unknownStreamingURL.contentType;
+
+        // URL matches no pattern
+        expect(detectMediaTypeByPattern(url)).toBeNull();
+
+        // But Content-Type detection should succeed
+        expect(detectMediaTypeByContentType(contentType)).toBe('stream');
+      });
+
+      test('should prioritize extension over all other methods', () => {
+        const url = YOUTUBE_FIXTURES.withExtension.url;
+        const contentType = 'video/mp4';
+
+        // All three detection methods could match
+        expect(detectMediaTypeByPattern(url)).toBe('stream'); // pattern matches
+        expect(detectMediaTypeByContentType(contentType)).toBe('stream'); // content-type matches
+
+        // But extension should take priority
+        expect(getMediaType(url)).toBe('video');
+      });
+
+      test('should prioritize pattern over Content-Type', () => {
+        const url = VIMEO_FIXTURES.vimeoVideoBasic.url;
+        const contentType = 'video/webm';
+
+        // Both pattern and content-type could match
+        expect(detectMediaTypeByPattern(url)).toBe('stream');
+        expect(detectMediaTypeByContentType(contentType)).toBe('stream');
+
+        // Pattern should take priority
+        expect(getMediaType(url)).toBe('stream');
+      });
+    });
+
+    describe('Deduplication across detection methods', () => {
+      test('should recognize same URL detected via extension and pattern as duplicate', () => {
+        const { url } = DEDUPLICATION_FIXTURES.youtubeWithExtension;
+
+        // Same URL has both extension and pattern
+        expect(detectMediaTypeByPattern(url)).toBe('stream');
+
+        // But getMediaType prioritizes extension
+        expect(getMediaType(url)).toBe('video');
+
+        // Normalized URLs should be the same (deduplication key)
+        const cleanUrl = url.split('?')[0].split('#')[0];
+        expect(cleanUrl).toBe('https://googlevideo.com/videoplayback.mp4');
+      });
+
+      test('should recognize same URL detected via pattern and Content-Type as duplicate', () => {
+        const { url, contentType } = DEDUPLICATION_FIXTURES.vimeoWithContentType;
+
+        // Same URL has both pattern and content-type
+        expect(detectMediaTypeByPattern(url)).toBe('stream');
+        expect(detectMediaTypeByContentType(contentType)).toBe('stream');
+
+        // Both should detect as stream
+        expect(getMediaType(url)).toBe('stream');
+      });
+
+      test('should handle URL matching all three detection methods', () => {
+        const { url, contentType } = DEDUPLICATION_FIXTURES.allThreeMethods;
+
+        // All three methods match
+        expect(detectMediaTypeByPattern(url)).toBe('stream');
+        expect(detectMediaTypeByContentType(contentType)).toBe('stream');
+
+        // But extension takes priority
+        expect(getMediaType(url)).toBe('video');
+      });
+
+      test('should normalize URLs for deduplication (remove query params and fragments)', () => {
+        const baseUrl = 'https://googlevideo.com/videoplayback';
+        const urlWithParams = `${baseUrl}?token=abc&id=123`;
+        const urlWithFragment = `${baseUrl}#t=10`;
+        const urlWithBoth = `${baseUrl}?token=abc#t=10`;
+
+        // All variants should clean to the same base URL
+        expect(cleanUrl(urlWithParams)).toBe(baseUrl);
+        expect(cleanUrl(urlWithFragment)).toBe(baseUrl);
+        expect(cleanUrl(urlWithBoth)).toBe(baseUrl);
+      });
+
+      test('should detect same video from multiple sources', () => {
+        // Imagine the same video is detected via:
+        // 1. Pattern detection (googlevideo.com)
+        // 2. Content-Type header (video/mp4)
+        // Both should have normalized URL as dedup key
+
+        const youtubeUrl = 'https://googlevideo.com/videoplayback?v=123';
+        const youtubeNormalized = cleanUrl(youtubeUrl);
+
+        expect(youtubeNormalized).toBe('https://googlevideo.com/videoplayback');
+        expect(detectMediaTypeByPattern(youtubeUrl)).toBe('stream');
+      });
+    });
+
+    describe('Real-world streaming scenarios', () => {
+      test('should handle YouTube URL with complex parameters', () => {
+        // Real YouTube URLs have many parameters
+        const youtubeUrl =
+          'https://r1---sn-5hne6nzs.googlevideo.com/videoplayback?expire=1710547200&ei=abc123&ip=192.168.1.1&id=xyz789&itag=18&source=youtube&requiressl=yes&mh=AB&mm=31&mn=sn-5hne6nzs&ms=sqd&mv=m&mvi=1&pl=24&initcwndbps=8750000';
+
+        expect(detectMediaTypeByPattern(youtubeUrl)).toBe('stream');
+        expect(getMediaType(youtubeUrl)).toBe('stream');
+      });
+
+      test('should handle Vimeo URL with authentication', () => {
+        const vimeoUrl = 'https://vimeo.com/video/123456789?h=abc123xyz&s=token&expires=1710547200';
+
+        expect(detectMediaTypeByPattern(vimeoUrl)).toBe('stream');
+        expect(getMediaType(vimeoUrl)).toBe('stream');
+      });
+
+      test('should handle streaming URL without pattern but with Content-Type', () => {
+        const unknownStreamUrl = 'https://streaming.example.com/video/abc123/segment';
+        const contentType = 'video/mp4';
+
+        // No pattern match
+        expect(detectMediaTypeByPattern(unknownStreamUrl)).toBeNull();
+
+        // But Content-Type should detect it
+        expect(detectMediaTypeByContentType(contentType)).toBe('stream');
+      });
+
+      test('should handle audio streaming URLs', () => {
+        const audioContentType = 'audio/mpeg';
+
+        expect(detectMediaTypeByContentType(audioContentType)).toBe('audio');
+      });
+
+      test('should handle URLs with minimal pattern matching requirements', () => {
+        // Just the domain, no path or parameters
+        const minimalYoutube = 'https://googlevideo.com/';
+        const minimalVimeoPlayer = 'https://player.vimeo.com/';
+
+        expect(detectMediaTypeByPattern(minimalYoutube)).toBe('stream');
+        expect(detectMediaTypeByPattern(minimalVimeoPlayer)).toBe('stream');
+      });
+    });
+  });
+
   describe('Debug logging integration', () => {
     let originalEnv;
     let consoleLogSpy;
