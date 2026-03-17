@@ -14,6 +14,8 @@ import {
   isSimpleVideoURL,
   isStreamSegmentURL,
   MEDIA_EXTENSIONS,
+  URL_PATTERNS,
+  detectMediaTypeByPattern,
 } from '../src/utils/media-extensions';
 
 describe('Media Extensions', () => {
@@ -502,6 +504,177 @@ describe('Media Extensions', () => {
       test('should be case-insensitive', () => {
         expect(isStreamSegmentURL('SEGMENT.TS')).toBe(true);
         expect(isStreamSegmentURL('Segment.M4S')).toBe(true);
+      });
+    });
+  });
+
+  describe('URL_PATTERNS constant', () => {
+    test('should export URL_PATTERNS object', () => {
+      expect(URL_PATTERNS).toBeDefined();
+      expect(typeof URL_PATTERNS).toBe('object');
+    });
+
+    test('should contain stream patterns', () => {
+      expect(URL_PATTERNS.stream).toBeDefined();
+      expect(Array.isArray(URL_PATTERNS.stream)).toBe(true);
+      expect(URL_PATTERNS.stream.length).toBeGreaterThan(0);
+    });
+
+    test('should have patterns for googlevideo.com', () => {
+      const hasGoogleVideoPattern = URL_PATTERNS.stream.some(
+        (pattern) => pattern.source.includes('googlevideo')
+      );
+      expect(hasGoogleVideoPattern).toBe(true);
+    });
+
+    test('should have patterns for vimeo.com/video', () => {
+      const hasVimeoVideoPattern = URL_PATTERNS.stream.some(
+        (pattern) => pattern.source.includes('vimeo') && pattern.source.includes('video')
+      );
+      expect(hasVimeoVideoPattern).toBe(true);
+    });
+
+    test('should have patterns for player.vimeo.com', () => {
+      const hasPlayerVimeoPattern = URL_PATTERNS.stream.some(
+        (pattern) => pattern.source.includes('player') && pattern.source.includes('vimeo')
+      );
+      expect(hasPlayerVimeoPattern).toBe(true);
+    });
+  });
+
+  describe('detectMediaTypeByPattern(url)', () => {
+    describe('Google Video / YouTube patterns', () => {
+      test('should detect googlevideo.com URLs', () => {
+        expect(detectMediaTypeByPattern('https://r1---sn-5hne6nzs.googlevideo.com/videoplayback')).toBe('stream');
+        expect(detectMediaTypeByPattern('https://googlevideo.com/videoplayback?id=123')).toBe('stream');
+        expect(detectMediaTypeByPattern('http://r2.googlevideo.com/file')).toBe('stream');
+      });
+
+      test('should detect googlevideo.com case-insensitively', () => {
+        expect(detectMediaTypeByPattern('https://GOOGLEVIDEO.COM/video')).toBe('stream');
+        expect(detectMediaTypeByPattern('https://GoogleVideo.com/stream')).toBe('stream');
+        expect(detectMediaTypeByPattern('https://r1---sn-5hne6nzs.GOOGLEVIDEO.COM/videoplayback')).toBe('stream');
+      });
+
+      test('should ignore query parameters', () => {
+        expect(
+          detectMediaTypeByPattern('https://r1---sn-5hne6nzs.googlevideo.com/videoplayback?id=123&range=0-1000')
+        ).toBe('stream');
+      });
+
+      test('should ignore fragments', () => {
+        expect(detectMediaTypeByPattern('https://r1---sn-5hne6nzs.googlevideo.com/videoplayback#t=10')).toBe('stream');
+      });
+
+      test('should ignore both query params and fragments', () => {
+        expect(
+          detectMediaTypeByPattern('https://r1---sn-5hne6nzs.googlevideo.com/videoplayback?id=123#t=10')
+        ).toBe('stream');
+      });
+    });
+
+    describe('Vimeo /video/ pattern', () => {
+      test('should detect vimeo.com/video/ URLs', () => {
+        expect(detectMediaTypeByPattern('https://vimeo.com/video/123456')).toBe('stream');
+        expect(detectMediaTypeByPattern('https://vimeo.com/video/87654321/config')).toBe('stream');
+      });
+
+      test('should detect vimeo.com/video/ case-insensitively', () => {
+        expect(detectMediaTypeByPattern('https://VIMEO.COM/VIDEO/123456')).toBe('stream');
+        expect(detectMediaTypeByPattern('https://Vimeo.com/Video/123')).toBe('stream');
+      });
+
+      test('should ignore query parameters', () => {
+        expect(detectMediaTypeByPattern('https://vimeo.com/video/123456?auth=token')).toBe('stream');
+      });
+
+      test('should not match vimeo.com without /video/', () => {
+        expect(detectMediaTypeByPattern('https://vimeo.com/123456')).not.toBe('stream');
+        expect(detectMediaTypeByPattern('https://vimeo.com/')).not.toBe('stream');
+      });
+    });
+
+    describe('Vimeo player pattern', () => {
+      test('should detect player.vimeo.com URLs', () => {
+        expect(detectMediaTypeByPattern('https://player.vimeo.com/video/123456')).toBe('stream');
+        expect(detectMediaTypeByPattern('https://player.vimeo.com/external/123.mp4')).toBe('stream');
+      });
+
+      test('should detect player.vimeo.com case-insensitively', () => {
+        expect(detectMediaTypeByPattern('https://PLAYER.VIMEO.COM/video/123')).toBe('stream');
+        expect(detectMediaTypeByPattern('https://Player.Vimeo.Com/external/456')).toBe('stream');
+      });
+
+      test('should ignore query parameters', () => {
+        expect(detectMediaTypeByPattern('https://player.vimeo.com/video/123?v=1')).toBe('stream');
+        expect(detectMediaTypeByPattern('https://player.vimeo.com/external/123.mp4?token=abc')).toBe('stream');
+      });
+    });
+
+    describe('Non-matching URLs', () => {
+      test('should return null for regular URLs without patterns', () => {
+        expect(detectMediaTypeByPattern('https://example.com/video')).toBeNull();
+        expect(detectMediaTypeByPattern('https://youtube.com/watch?v=123')).toBeNull();
+        expect(detectMediaTypeByPattern('https://dailymotion.com/video/123')).toBeNull();
+      });
+
+      test('should return null for file extensions (without patterns)', () => {
+        expect(detectMediaTypeByPattern('https://example.com/video.mp4')).toBeNull();
+        expect(detectMediaTypeByPattern('video.webm')).toBeNull();
+      });
+
+      test('should return null for partial pattern matches', () => {
+        expect(detectMediaTypeByPattern('https://fakegooglevideo.com/video')).toBeNull();
+        expect(detectMediaTypeByPattern('https://myvimeo.com/video/123')).toBeNull();
+      });
+    });
+
+    describe('Malformed URLs', () => {
+      test('should return null for invalid input types', () => {
+        expect(detectMediaTypeByPattern(null)).toBeNull();
+        expect(detectMediaTypeByPattern(undefined)).toBeNull();
+        expect(detectMediaTypeByPattern(123)).toBeNull();
+        expect(detectMediaTypeByPattern({})).toBeNull();
+        expect(detectMediaTypeByPattern([])).toBeNull();
+      });
+
+      test('should return null for empty strings', () => {
+        expect(detectMediaTypeByPattern('')).toBeNull();
+        expect(detectMediaTypeByPattern('   ')).toBeNull();
+      });
+
+      test('should handle URLs with only query params or fragments', () => {
+        expect(detectMediaTypeByPattern('?query=value')).toBeNull();
+        expect(detectMediaTypeByPattern('#fragment')).toBeNull();
+      });
+    });
+
+    describe('Integration with getMediaType', () => {
+      test('getMediaType should return "stream" for googlevideo.com URLs', () => {
+        expect(getMediaType('https://r1---sn-5hne6nzs.googlevideo.com/videoplayback')).toBe('stream');
+      });
+
+      test('getMediaType should return "stream" for vimeo.com/video URLs', () => {
+        expect(getMediaType('https://vimeo.com/video/123456')).toBe('stream');
+      });
+
+      test('getMediaType should return "stream" for player.vimeo.com URLs', () => {
+        expect(getMediaType('https://player.vimeo.com/video/123')).toBe('stream');
+      });
+
+      test('getMediaType should prioritize extensions over patterns', () => {
+        // A URL with both extension and pattern should return based on extension first
+        expect(getMediaType('https://example.com/video.mp4')).toBe('video');
+      });
+
+      test('getMediaType should fall back to pattern when no extension', () => {
+        expect(getMediaType('https://vimeo.com/video/123456')).toBe('stream');
+        expect(getMediaType('https://googlevideo.com/videoplayback')).toBe('stream');
+      });
+
+      test('getMediaType should return unknown for non-matching URLs', () => {
+        expect(getMediaType('https://example.com/media')).toBe('unknown');
+        expect(getMediaType('https://custom-site.com/stream')).toBe('unknown');
       });
     });
   });
