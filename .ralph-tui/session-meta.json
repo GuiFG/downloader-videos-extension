@@ -1,0 +1,13 @@
+{
+  "id": "213c00ba-3786-4a2c-b388-5fc2d20c5ce3",
+  "status": "running",
+  "startedAt": "2026-03-17T00:32:33.935Z",
+  "updatedAt": "2026-03-17T00:32:33.936Z",
+  "agentPlugin": "claude",
+  "trackerPlugin": "json",
+  "currentIteration": 0,
+  "maxIterations": 10,
+  "totalTasks": 0,
+  "tasksCompleted": 0,
+  "cwd": "/workspaces/downloader"
+}
