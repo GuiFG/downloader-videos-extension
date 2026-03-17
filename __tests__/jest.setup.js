@@ -49,6 +49,10 @@ global.chrome = {
 // Mock fetch (se necessário)
 global.fetch = jest.fn();
 
+// Mock confirm/alert for popup tests
+global.confirm = jest.fn(() => true);
+global.alert = jest.fn();
+
 // Mock de indexedDB (básico)
 if (typeof window !== 'undefined') {
   Object.defineProperty(window, 'indexedDB', {

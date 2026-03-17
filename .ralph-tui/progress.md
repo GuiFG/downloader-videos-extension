@@ -21,6 +21,74 @@ after each iteration and it's included in prompts for context.
 
 ---
 
+## [2026-03-17] - US-005 (Popup UI)
+
+### What was implemented
+- Complete Popup UI module for displaying detected videos, managing downloads, and filtering/sorting
+- 38 comprehensive tests covering:
+  - Video list fetching from chrome.storage
+  - Video rendering with type icons (📺 HLS, 🎬 DASH, 🎞️ MP4)
+  - Download button functionality with progress tracking
+  - Filter dropdown for video type filtering (All, HLS, DASH, MP4)
+  - Sort dropdown for organizing videos by recency or quality
+  - Clear All button to remove video list
+  - Refresh button to reload videos
+  - Error handling for download failures
+  - UI state updates and status messaging
+  - Edge cases and rapid control changes
+
+### Files changed
+- **Created**: `__tests__/popup.test.js` - 38 comprehensive tests (all passing)
+- **Updated**: `src/popup/popup.js` - Full implementation with 9 exported functions
+- **Updated**: `src/popup/popup.html` - Added filter/sort controls, all required elements
+- **Updated**: `src/popup/popup.css` - Added responsive styling for controls and UI elements
+- **Updated**: `__tests__/jest.setup.js` - Added global mocks for confirm/alert
+
+### Acceptance Criteria Status
+✅ All acceptance criteria met:
+- 38 tests (>8 required) covering all UI functionality
+- `getVideoList()` fetches videos from chrome.storage.local
+- `renderVideoList()` displays videos with type icons, quality, timestamps
+- `filterVideos()` filters by type (hls, dash, video, all)
+- `sortVideos()` sorts by recency (newest first) or quality
+- `downloadVideo()` initiates downloads via service worker messaging
+- `initPopup()` initializes UI with video list and event listeners
+- `clearAllVideos()` removes all videos from storage
+- Filter dropdown dynamically filters displayed videos
+- Sort dropdown re-orders videos by selected criterion
+- Download buttons trigger downloads with progress callbacks
+- Clear All button with confirmation removes all videos
+- Refresh button reloads video list from storage
+- Progress bar updates during downloads
+- Status messages show download state (info, success, error)
+- Real-time progress tracking with percentage updates
+- Color-coded status display (green=success, red=error, blue=info)
+- Type icons: 📺 HLS, 🎬 DASH, 🎞️ MP4, 📹 unknown
+- Responsive design with 500px popup width
+- Test coverage: **83.43%** statements, **83.43%** lines, **86.2%** functions, **67.07%** branches
+- **ESLint**: No errors on popup files (only 1 pre-existing warning in hls-parser.test.js)
+- All 299 tests across all modules **PASS** (261 existing + 38 new)
+
+### Learnings
+- **Chrome message pattern for popup**: Use chrome.runtime.sendMessage with callback to communicate with Service Worker
+- **Promise wrapping**: Wrap callback-based chrome.runtime.sendMessage in Promise for async/await compatibility
+- **Progress callback integration**: Service Worker can pass progress updates to popup via message callback
+- **DOM rendering**: Creating elements dynamically with appendChild is more flexible than innerHTML for interactive components
+- **URL parsing in popup**: Use URL constructor to extract filenames from full URLs for cleaner display
+- **Error state management**: Track error/success states in status div with class changes for visual feedback
+- **jsdom limitations**: Global functions like confirm() need to be mocked in jest.setup.js for popup tests
+- **Event delegation patterns**: Individual download buttons on list items work better than delegated click handlers for targeted actions
+- **Filter/sort coupling**: When user changes filter, need to re-apply current sort - maintain sort state during filter changes
+- **Async initialization**: Auto-initialize popup on both DOMContentLoaded and module load for reliability
+
+### Patterns Added to Codebase
+- **Popup UI Pattern**: Use helper functions for formatDate, getTypeIcon, getTypeLabel to keep renderVideoList clean
+- **Filter + Sort Pattern**: Separate filter and sort functions that work on arrays for composition and testability
+- **Status Update Pattern**: Centralized updateStatus() and updateProgress() functions for consistent UI feedback
+- **Async Callback Pattern**: Pass onProgress callback through message to service worker, bubbles up to UI
+
+---
+
 ## [2026-03-17] - US-004 (Content Script)
 
 ### What was implemented

@@ -9,14 +9,33 @@
 <body>
   <div class="container">
     <h1>Video Downloader</h1>
-    <div id="status" class="status">Scanning for videos...</div>
-    
+    <div id="status" class="status">Loading videos...</div>
+
+    <div class="controls">
+      <div id="filter">
+        <label for="filter-dropdown">Filter:</label>
+        <select id="filter-dropdown">
+          <option value="all">All</option>
+          <option value="hls">HLS</option>
+          <option value="dash">DASH</option>
+          <option value="video">MP4</option>
+        </select>
+      </div>
+      <div id="sort">
+        <label for="sort-dropdown">Sort:</label>
+        <select id="sort-dropdown">
+          <option value="recency">Recent First</option>
+          <option value="quality">Quality</option>
+        </select>
+      </div>
+    </div>
+
     <ul id="video-list" class="video-list">
       <!-- Videos populated by JS -->
     </ul>
-    
+
     <progress id="progress" class="progress" max="100" value="0"></progress>
-    
+
     <div class="actions">
       <button id="refresh-btn" class="btn">Refresh</button>
       <button id="clear-btn" class="btn btn-danger">Clear All</button>
