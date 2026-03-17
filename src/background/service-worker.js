@@ -10,7 +10,7 @@
  * - Gerenciar downloads
  */
 
-import { isMediaURL, getMediaType, detectMediaTypeByContentType } from '../utils/media-extensions.js';
+import { isMediaURL, getMediaType, detectMediaTypeByContentType, detectMediaTypeByPattern } from '../utils/media-extensions.js';
 import { downloadFragments } from '../utils/fragment-downloader.js';
 import { parseHLS } from '../utils/hls-parser.js';
 import { parseDALE } from '../utils/dash-parser.js';
@@ -56,26 +56,60 @@ export function normalizeUrl(url) {
 
 /**
  * Detect if a URL is a video and classify it
+ * Checks in order: extension → URL pattern → Content-Type
  * @param {string} url - URL to check
  * @param {number} tabId - ID of the tab that made the request
+ * @param {string|null} contentType - Optional Content-Type header value
  * @returns {object|null} Video object or null if not a media URL
  */
-export function detectVideoUrl(url, tabId) {
-  if (!isMediaURL(url)) {
+export function detectVideoUrl(url, tabId, contentType = null) {
+  let type = null;
+  let detectionMethod = null;
+
+  // First, try extension-based detection
+  if (isMediaURL(url)) {
+    type = getMediaType(url);
+    if (type !== 'unknown') {
+      detectionMethod = 'extension';
+    }
+  }
+
+  // If no extension match, try URL pattern detection
+  if (type === null || type === 'unknown') {
+    const patternType = detectMediaTypeByPattern(url);
+    if (patternType) {
+      type = patternType;
+      detectionMethod = 'pattern';
+    }
+  }
+
+  // If still not detected and Content-Type provided, try Content-Type detection
+  if ((type === null || type === 'unknown') && contentType) {
+    const contentTypeDetection = detectMediaTypeByContentType(contentType);
+    if (contentTypeDetection) {
+      type = contentTypeDetection;
+      detectionMethod = 'content-type';
+    }
+  }
+
+  // Return null if no detection method found a match
+  if (type === null || type === 'unknown') {
     return null;
   }
 
-  const type = getMediaType(url);
-  if (type === 'unknown') {
-    return null;
-  }
-
-  return {
+  const video = {
     url,
     type,
     tabId,
     timestamp: Date.now(),
   };
+
+  // Attach detection method for tracking
+  if (detectionMethod) {
+    video.detectionMethod = detectionMethod;
+  }
+
+  return video;
 }
 
 /**
@@ -428,16 +462,10 @@ function onHeadersReceived(details) {
     return {};
   }
 
-  const mediaType = detectMediaTypeByContentType(contentTypeHeader.value);
-  if (mediaType) {
-    const video = {
-      url,
-      type: mediaType,
-      tabId,
-      timestamp: Date.now(),
-      detectionMethod: 'content-type',
-    };
-    log('Video detected by Content-Type header', { url, type: mediaType, contentType: contentTypeHeader.value });
+  // Use detectVideoUrl with Content-Type to try all detection methods
+  const video = detectVideoUrl(url, tabId, contentTypeHeader.value);
+  if (video) {
+    log('Video detected by headers inspection', { url, type: video.type, detectionMethod: video.detectionMethod });
     addVideoToCollection(video);
     // Save and broadcast immediately
     saveVideos();

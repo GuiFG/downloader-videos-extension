@@ -19,6 +19,13 @@ jest.mock('../src/utils/media-extensions.js', () => ({
     if (url.includes('.mp4')) return 'video';
     return 'unknown';
   }),
+  detectMediaTypeByPattern: jest.fn((url) => {
+    if (!url) return null;
+    // Mock pattern detection for googlevideo.com and vimeo.com/video/
+    if (url.includes('googlevideo.com')) return 'stream';
+    if (url.includes('vimeo.com/video/') || url.includes('player.vimeo.com')) return 'stream';
+    return null;
+  }),
   cleanUrl: jest.fn((url) => {
     if (!url) return '';
     return url.split('?')[0].split('#')[0];
@@ -894,6 +901,168 @@ describe('Service Worker', () => {
         );
         expect(contentTypeHeader).toBeUndefined();
       }).not.toThrow();
+    });
+  });
+
+  describe('Integrated Pattern and Content-Type Detection', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      chrome.storage.local.get.mockImplementation((keys, callback) => {
+        callback({});
+      });
+      chrome.storage.local.set.mockImplementation((items, callback) => {
+        if (callback) callback();
+      });
+      chrome.tabs.query.mockImplementation((query, callback) => {
+        callback([]);
+      });
+      chrome.tabs.sendMessage.mockImplementation(() => Promise.resolve());
+    });
+
+    test('should detect video by extension (priority 1)', () => {
+      const result = detectVideoUrl('https://example.com/video.mp4', 1);
+      expect(result).not.toBeNull();
+      expect(result.type).toBe('video');
+      expect(result.detectionMethod).toBe('extension');
+    });
+
+    test('should detect video by URL pattern when extension not present (priority 2)', () => {
+      const result = detectVideoUrl('https://googlevideo.com/stream', 1);
+      expect(result).not.toBeNull();
+      expect(result.type).toBe('stream');
+      expect(result.detectionMethod).toBe('pattern');
+    });
+
+    test('should detect video by Content-Type when neither extension nor pattern match (priority 3)', () => {
+      const result = detectVideoUrl('https://example.com/stream', 1, 'video/mp4');
+      expect(result).not.toBeNull();
+      expect(result.type).toBe('stream');
+      expect(result.detectionMethod).toBe('content-type');
+    });
+
+    test('should prefer extension detection over pattern detection', () => {
+      // URL has both extension and matches pattern
+      const result = detectVideoUrl('https://googlevideo.com/stream.mp4', 1);
+      expect(result).not.toBeNull();
+      expect(result.detectionMethod).toBe('extension');
+    });
+
+    test('should prefer pattern detection over Content-Type detection', () => {
+      // URL matches pattern but Content-Type is also provided
+      const result = detectVideoUrl('https://googlevideo.com/stream', 1, 'video/mp4');
+      expect(result).not.toBeNull();
+      expect(result.detectionMethod).toBe('pattern');
+    });
+
+    test('should detect audio by Content-Type', () => {
+      const result = detectVideoUrl('https://example.com/audio', 1, 'audio/mpeg');
+      expect(result).not.toBeNull();
+      expect(result.type).toBe('audio');
+      expect(result.detectionMethod).toBe('content-type');
+    });
+
+    test('should return null when no detection method matches', () => {
+      const result = detectVideoUrl('https://example.com/page.html', 1, 'text/html');
+      expect(result).toBeNull();
+    });
+
+    test('should return null when Content-Type is provided but is not media', () => {
+      const result = detectVideoUrl('https://example.com/data', 1, 'application/json');
+      expect(result).toBeNull();
+    });
+
+    test('should include timestamp in detected video', () => {
+      const beforeTime = Date.now();
+      const result = detectVideoUrl('https://example.com/video.mp4', 1);
+      const afterTime = Date.now();
+      expect(result.timestamp).toBeGreaterThanOrEqual(beforeTime);
+      expect(result.timestamp).toBeLessThanOrEqual(afterTime);
+    });
+
+    test('should not include detectionMethod when no detection found', () => {
+      const result = detectVideoUrl('https://example.com/page.html', 1);
+      expect(result).toBeNull();
+    });
+
+    test('should detect pattern-based URL for vimeo.com/video/', () => {
+      const result = detectVideoUrl('https://vimeo.com/video/12345', 1);
+      expect(result).not.toBeNull();
+      expect(result.type).toBe('stream');
+      expect(result.detectionMethod).toBe('pattern');
+    });
+
+    test('should detect pattern-based URL for player.vimeo.com', () => {
+      const result = detectVideoUrl('https://player.vimeo.com/video/12345', 1);
+      expect(result).not.toBeNull();
+      expect(result.type).toBe('stream');
+      expect(result.detectionMethod).toBe('pattern');
+    });
+
+    test('should handle URL with query parameters correctly with pattern detection', () => {
+      const result = detectVideoUrl('https://googlevideo.com/stream?token=abc&version=1', 1);
+      expect(result).not.toBeNull();
+      expect(result.type).toBe('stream');
+      expect(result.detectionMethod).toBe('pattern');
+    });
+  });
+
+  describe('Headers Inspection with Unified Detection', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      chrome.storage.local.get.mockImplementation((keys, callback) => {
+        callback({});
+      });
+      chrome.storage.local.set.mockImplementation((items, callback) => {
+        if (callback) callback();
+      });
+      chrome.tabs.query.mockImplementation((query, callback) => {
+        callback([]);
+      });
+      chrome.tabs.sendMessage.mockImplementation(() => Promise.resolve());
+    });
+
+    test('should detect video from Content-Type header using unified detectVideoUrl', async () => {
+      await clearDetectedVideos();
+
+      const result = detectVideoUrl('https://example.com/stream', 1, 'video/mp4');
+      expect(result).not.toBeNull();
+      expect(result.type).toBe('stream');
+      expect(result.detectionMethod).toBe('content-type');
+    });
+
+    test('should not detect non-media Content-Type', async () => {
+      const result = detectVideoUrl('https://example.com/page', 1, 'text/html');
+      expect(result).toBeNull();
+    });
+
+    test('should broadcast VIDEOS_UPDATED when Content-Type detects video', async () => {
+      await clearDetectedVideos();
+
+      chrome.tabs.query.mockImplementation((query, callback) => {
+        callback([{ id: 1, url: 'https://example.com' }]);
+      });
+
+      const video = {
+        url: 'https://example.com/stream',
+        type: 'stream',
+        tabId: 1,
+        timestamp: Date.now(),
+        detectionMethod: 'content-type',
+      };
+
+      await handleMessage({ type: 'ADD_VIDEO', video });
+
+      expect(chrome.tabs.sendMessage).toHaveBeenCalled();
+      const calls = chrome.tabs.sendMessage.mock.calls;
+      const broadcastCall = calls.find(call => call[1]?.type === 'VIDEOS_UPDATED');
+      expect(broadcastCall).toBeDefined();
+    });
+
+    test('should handle Content-Type with parameters in headers inspection', async () => {
+      const result = detectVideoUrl('https://example.com/stream', 1, 'video/mp4; charset=utf-8');
+      expect(result).not.toBeNull();
+      expect(result.type).toBe('stream');
+      expect(result.detectionMethod).toBe('content-type');
     });
   });
 });
