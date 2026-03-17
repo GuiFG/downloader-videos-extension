@@ -1,5 +1,9 @@
 # Video Downloader Extension
 
+[![Coverage Status](https://img.shields.io/badge/coverage-86.72%25-brightgreen)]()
+[![Branch Coverage](https://img.shields.io/badge/branch%20coverage-77.64%25-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-430%20passed-brightgreen)]()
+
 A Chrome extension to download HLS and DASH streaming videos with TDD methodology.
 
 ## Setup

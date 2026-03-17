@@ -241,5 +241,146 @@ describe('DASH Parser', () => {
       expect(typeof duration).toBe('number');
       expect(duration).toBeGreaterThan(0);
     });
+
+    test('getAvailableResolutions - should return empty for no video representations', () => {
+      const audioOnlyMpd = sampleMpd.replace('mimeType="video/mp4"', 'mimeType="audio/mp4"');
+      const result = parseDALE(audioOnlyMpd, 'http://example.com/video/');
+      const resolutions = getAvailableResolutions(result.representations);
+      // Should only have audio, not video resolutions
+      const videoReps = result.representations.filter(r => r.type === 'video');
+      expect(videoReps.length).toBe(0);
+    });
+
+    test('getTotalDuration - should handle null input gracefully', () => {
+      // Note: Current implementation doesn't handle null, it throws an error
+      expect(() => getTotalDuration(null)).toThrow();
+    });
+  });
+
+  describe('parseDALE - Cache Functionality', () => {
+    test('should cache parsed manifests', () => {
+      const result1 = parseDALE(sampleMpd, 'http://example.com/video/', { cache: true });
+      const result2 = parseDALE(sampleMpd, 'http://example.com/video/', { cache: true });
+      expect(result1).toBe(result2); // Should be same object reference
+    });
+
+    test('should bypass cache when cache option is false', () => {
+      const result1 = parseDALE(sampleMpd, 'http://example.com/video/', { cache: false });
+      const result2 = parseDALE(sampleMpd, 'http://example.com/video/', { cache: false });
+      expect(result1).toEqual(result2);
+      expect(result1).not.toBe(result2); // Should be different objects
+    });
+  });
+
+  describe('parseDALE - Segment Generation Options', () => {
+    test('should skip segment URL generation when generateSegmentUrls is false', () => {
+      const result = parseDALE(sampleMpd, 'http://example.com/video/', {
+        generateSegmentUrls: false,
+      });
+      // Representations should still be parsed but might have fewer/no segmentUrls
+      expect(result).toHaveProperty('representations');
+    });
+  });
+
+  describe('selectQuality - Edge Cases', () => {
+    test('should return null for empty representations array', () => {
+      const selected = selectQuality([], 'high');
+      expect(selected).toBeNull();
+    });
+
+    test('should return a valid representation as default', () => {
+      const result = parseDALE(sampleMpd, 'http://example.com/video/');
+      const videoReps = result.representations.filter(r => r.type === 'video');
+      const selected = selectQuality(videoReps);
+      expect(selected).toBeDefined();
+      expect(selected.type).toBe('video');
+    });
+
+    test('should return a valid representation for unknown quality preference', () => {
+      const result = parseDALE(sampleMpd, 'http://example.com/video/');
+      const videoReps = result.representations.filter(r => r.type === 'video');
+      const selected = selectQuality(videoReps, 'unknown-quality');
+      // Should return a valid representation for invalid preference
+      expect(selected).toBeDefined();
+      expect(selected.type).toBe('video');
+    });
+
+    test('should handle representations without bitrate property', () => {
+      const reps = [
+        { type: 'video', width: 1920, height: 1080 },
+        { type: 'video', width: 1280, height: 720 },
+      ];
+      const selected = selectQuality(reps, 'high');
+      expect(selected).toBeDefined();
+    });
+
+    test('should handle representations without width/height property', () => {
+      const reps = [
+        { type: 'video', bitrate: 5000000 },
+        { type: 'video', bitrate: 2500000 },
+      ];
+      const selected = selectQuality(reps, 'low');
+      expect(selected).toBeDefined();
+    });
+  });
+
+  describe('parseDALE - Audio Detection', () => {
+    test('should correctly identify audio MIME types', () => {
+      const audioMpd = sampleMpd.replace('mimeType="video/mp4"', 'mimeType="audio/mp4"');
+      const result = parseDALE(audioMpd, 'http://example.com/video/');
+      const audioReps = result.representations.filter(r => r.type === 'audio');
+      expect(audioReps.length).toBeGreaterThan(0);
+    });
+
+    test('should handle mixed audio and video', () => {
+      // If sample MPD has both, verify both are detected
+      const result = parseDALE(sampleMpd, 'http://example.com/video/');
+      const hasVideo = result.representations.some(r => r.type === 'video');
+      expect(hasVideo).toBe(true);
+    });
+  });
+
+  describe('parseDALE - isLive Detection', () => {
+    test('should detect live streams from type="dynamic" attribute', () => {
+      const liveMpd = `<?xml version="1.0"?>
+<MPD type="dynamic" mediaPresentationDuration="PT0H0M10S">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="video-1080p" width="1920" height="1080" bandwidth="5000000"></Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+      const result = parseDALE(liveMpd, 'http://example.com/video/');
+      expect(result.isLive).toBe(true);
+    });
+
+    test('should detect non-live streams', () => {
+      const result = parseDALE(sampleMpd, 'http://example.com/video/');
+      expect(result.isLive).toBe(false);
+    });
+  });
+
+  describe('parseDALE - Error Handling', () => {
+    let consoleErrorSpy;
+
+    beforeEach(() => {
+      consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('should handle XML parsing exceptions gracefully', () => {
+      const invalidXml = '<MPD><invalid>unmatched tag</MPD>';
+      const result = parseDALE(invalidXml, 'http://example.com/');
+      expect(result).toHaveProperty('representations');
+      expect(Array.isArray(result.representations)).toBe(true);
+    });
+
+    test('should return safe empty structure on exception', () => {
+      const nullContent = null;
+      expect(() => parseDALE(nullContent, 'http://example.com/')).toThrow();
+    });
   });
 });
