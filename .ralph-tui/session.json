@@ -3,10 +3,10 @@
   "sessionId": "213c00ba-3786-4a2c-b388-5fc2d20c5ce3",
   "status": "running",
   "startedAt": "2026-03-17T00:32:34.413Z",
-  "updatedAt": "2026-03-17T00:37:42.260Z",
-  "currentIteration": 0,
+  "updatedAt": "2026-03-17T00:43:18.385Z",
+  "currentIteration": 1,
   "maxIterations": 10,
-  "tasksCompleted": 0,
+  "tasksCompleted": 1,
   "isPaused": false,
   "agentPlugin": "claude",
   "trackerState": {
@@ -14,7 +14,18 @@
     "totalTasks": 0,
     "tasks": []
   },
-  "iterations": [],
+  "iterations": [
+    {
+      "iteration": 1,
+      "status": "completed",
+      "taskId": "US-001",
+      "taskTitle": "Implement FFmpeg Concatenator (Fase 5)",
+      "taskCompleted": true,
+      "durationMs": 289911,
+      "startedAt": "2026-03-17T00:32:52.336Z",
+      "endedAt": "2026-03-17T00:37:42.247Z"
+    }
+  ],
   "skippedTaskIds": [],
   "cwd": "/workspaces/downloader",
   "activeTaskIds": [],

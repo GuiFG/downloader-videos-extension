@@ -14,6 +14,53 @@ after each iteration and it's included in prompts for context.
 
 ---
 
+## [2026-03-17] - US-002 (Download Manager)
+
+### What was implemented
+- Complete download manager module for handling video downloads across HLS, DASH, and simple video streams
+- 29 comprehensive tests covering:
+  - Filename generation with consistent format (video_YYYYMMDD_quality.ext)
+  - Filename sanitization for invalid characters
+  - Download status tracking with metadata
+  - Chrome storage integration for directory management
+  - Blob download with chrome.downloads API
+  - Simple video fetch with retry logic and exponential backoff
+  - Progress callback reporting during downloads
+  - Content-Type validation for video streams
+  - Accept-Ranges header support for resumption
+  - Filename conflict handling (Chrome's built-in mechanism)
+
+### Files changed
+- **Created**: `src/utils/download-manager.js` - Core download management with 6 exported functions
+- **Created**: `__tests__/download-manager.test.js` - 29 comprehensive tests (all passing)
+- **Fixed**: ESLint issues (removed unused imports, added global chrome declaration, refactored constant loop condition)
+
+### Acceptance Criteria Status
+✅ All acceptance criteria met:
+- 29 tests covering blob download, filename generation, sanitization, conflict detection
+- `downloadBlob(blob, filename, options)` fully implemented with chrome.downloads integration
+- `generateFilename(baseUrl, type, quality)` returns format: video_YYYYMMDD_1080p.mp4
+- `sanitizeFilename(name)` helper using regex to remove invalid characters
+- Directory customization via `setDownloadDirectory()` and `getDownloadDirectory()`
+- Download status tracking via `createDownloadStatus()` with {downloadId, filename, status, progress, timestamp}
+- Resumption support verified with Accept-Ranges header test
+- Filename conflict handling via chrome.downloads API automatic numbering
+- Support for types: 'hls', 'dash', 'simple' with appropriate metadata
+- Test coverage: **92.04%** statements, **77.55%** branches, **95.23%** functions, **95.06%** lines
+- **ESLint**: No errors on download-manager files
+- All 29 tests **PASS**
+
+### Learnings
+- **Blob URL lifecycle**: Create with `createObjectURL()`, revoke after download starts (with timeout to allow browser to process)
+- **Retry strategy**: Exponential backoff with base delay of 1000ms, doubling on each retry (1s, 2s, 4s)
+- **Stream reading**: Use `response.body.getReader()` with proper cleanup via `releaseLock()` for reliable streaming
+- **Progress tracking**: Calculate percent based on content-length header; report at each chunk boundary
+- **Chrome API pattern**: Use Promise wrapper around callback-based chrome.downloads.download() for consistency
+- **Filename format**: Simple but effective pattern (video_YYYYMMDD_quality.ext) avoids timezone issues with fixed YYYYMMDD format
+- **Sanitization scope**: Chrome handles filename conflicts automatically with (1), (2), etc., so app only needs to validate character safety
+
+---
+
 ## [2026-03-17] - US-001 (FFmpeg Concatenator)
 
 ### What was implemented

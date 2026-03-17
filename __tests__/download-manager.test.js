@@ -190,7 +190,7 @@ describe('Download Manager', () => {
       global.chrome.downloads.download = mockDownload;
 
       const blob = new Blob(['test'], { type: 'video/mp4' });
-      const downloadId = await downloadBlob(blob, 'video.mp4', { saveAs: true });
+      await downloadBlob(blob, 'video.mp4', { saveAs: true });
 
       expect(mockDownload).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -261,7 +261,6 @@ describe('Download Manager', () => {
 
     it('should call onProgress callback during download', async () => {
       const onProgress = jest.fn();
-      const mockBlob = new Blob(['test'], { type: 'video/mp4' });
 
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
@@ -299,7 +298,6 @@ describe('Download Manager', () => {
     });
 
     it('should retry on fetch failure up to 3 times', async () => {
-      const mockBlob = new Blob(['test'], { type: 'video/mp4' });
       const mockData = new Uint8Array([1, 2, 3, 4]);
 
       global.fetch = jest.fn()

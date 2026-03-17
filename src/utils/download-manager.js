@@ -10,7 +10,7 @@
  * - Implementar retry logic para downloads simples
  */
 
-import { getMediaType } from './media-extensions.js';
+/* global chrome */
 
 const DEFAULT_DOWNLOAD_DIR = 'Downloads';
 const INVALID_FILENAME_CHARS = /[<>:"|\\/?*]/g;
@@ -220,33 +220,34 @@ export async function downloadSimpleVideo(url, onProgress) {
         let downloadedBytes = 0;
         const chunks = [];
 
-        if (response.body) {
-          const reader = response.body.getReader();
-
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-
-              if (done) break;
-
-              chunks.push(value);
-              downloadedBytes += value.length;
-
-              if (onProgress && totalBytes) {
-                const percent = Math.min(100, Math.round((downloadedBytes / totalBytes) * 100));
-                onProgress({
-                  current: downloadedBytes,
-                  total: totalBytes,
-                  percent,
-                });
-              }
-            }
-          } finally {
-            reader.releaseLock();
-          }
-        } else {
+        if (!response.body) {
           // Fallback: usar blob() se body não disponível
           return response.blob();
+        }
+
+        const reader = response.body.getReader();
+
+        try {
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            const { done, value } = await reader.read();
+
+            if (done) break;
+
+            chunks.push(value);
+            downloadedBytes += value.length;
+
+            if (onProgress && totalBytes) {
+              const percent = Math.min(100, Math.round((downloadedBytes / totalBytes) * 100));
+              onProgress({
+                current: downloadedBytes,
+                total: totalBytes,
+                percent,
+              });
+            }
+          }
+        } finally {
+          reader.releaseLock();
         }
 
         // Combinar chunks e criar blob
