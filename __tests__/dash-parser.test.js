@@ -245,7 +245,6 @@ describe('DASH Parser', () => {
     test('getAvailableResolutions - should return empty for no video representations', () => {
       const audioOnlyMpd = sampleMpd.replace('mimeType="video/mp4"', 'mimeType="audio/mp4"');
       const result = parseDALE(audioOnlyMpd, 'http://example.com/video/');
-      const resolutions = getAvailableResolutions(result.representations);
       // Should only have audio, not video resolutions
       const videoReps = result.representations.filter(r => r.type === 'video');
       expect(videoReps.length).toBe(0);

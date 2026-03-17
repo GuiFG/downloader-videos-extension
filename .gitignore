@@ -7,3 +7,10 @@ build/
 coverage/
 __tests__/fixtures/*.mp4
 __tests__/fixtures/*.ts
+
+.ralph-tui/
+.claude/
+prd.json
+progress.txt
+scripts/
+tasks/

@@ -591,7 +591,6 @@ describe('Popup UI', () => {
 
       // Simulate download with progress updates
       const video = mockVideos[0];
-      const progressEl = document.querySelector('progress');
 
       // Progress should be clamped
       await downloadVideo(video);
@@ -606,7 +605,6 @@ describe('Popup UI', () => {
       });
 
       const video = mockVideos[0];
-      const statusEl = document.querySelector('#status');
 
       // Create a minimal test by calling downloadVideo directly since handleDownloadClick is internal
       try {

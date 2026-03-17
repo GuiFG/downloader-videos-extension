@@ -325,8 +325,7 @@ segment-1.ts`;
 
     test('parseHLS should preserve segment order', () => {
       const result = parseHLS(simpleM3U8, 'https://example.com/playlist/');
-      
-      const urls = result.streams.map((s, idx) => `segment-${idx}.ts`);
+
       result.streams.forEach((stream, idx) => {
         expect(stream.url).toContain(`segment-${idx}.ts`);
       });
