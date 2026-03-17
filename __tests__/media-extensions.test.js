@@ -9,6 +9,10 @@ import {
   isMediaURL,
   getMediaType,
   cleanUrl,
+  getExtensionsByType,
+  isPlaylistURL,
+  isSimpleVideoURL,
+  isStreamSegmentURL,
   MEDIA_EXTENSIONS,
 } from '../src/utils/media-extensions';
 
@@ -124,6 +128,24 @@ describe('Media Extensions', () => {
       });
     });
 
+    describe('should handle invalid input types', () => {
+      test('null returns false', () => {
+        expect(isMediaURL(null)).toBe(false);
+      });
+
+      test('undefined returns false', () => {
+        expect(isMediaURL(undefined)).toBe(false);
+      });
+
+      test('number returns false', () => {
+        expect(isMediaURL(123)).toBe(false);
+      });
+
+      test('object returns false', () => {
+        expect(isMediaURL({})).toBe(false);
+      });
+    });
+
     describe('should handle URLs with query parameters', () => {
       test('video.mp4?token=abc123 returns true', () => {
         expect(isMediaURL('video.mp4?token=abc123')).toBe(true);
@@ -215,6 +237,24 @@ describe('Media Extensions', () => {
         expect(getMediaType('MANIFEST.MPD')).toBe('dash');
       });
     });
+
+    describe('invalid input types', () => {
+      test('null returns "unknown"', () => {
+        expect(getMediaType(null)).toBe('unknown');
+      });
+
+      test('undefined returns "unknown"', () => {
+        expect(getMediaType(undefined)).toBe('unknown');
+      });
+
+      test('number returns "unknown"', () => {
+        expect(getMediaType(123)).toBe('unknown');
+      });
+
+      test('object returns "unknown"', () => {
+        expect(getMediaType({})).toBe('unknown');
+      });
+    });
   });
 
   describe('cleanUrl(url)', () => {
@@ -241,6 +281,228 @@ describe('Media Extensions', () => {
       expect(cleanUrl('')).toBe('');
       expect(cleanUrl('?query')).toBe('');
       expect(cleanUrl('#fragment')).toBe('');
+    });
+
+    test('should handle null/undefined/non-string inputs', () => {
+      expect(cleanUrl(null)).toBe('');
+      expect(cleanUrl(undefined)).toBe('');
+      expect(cleanUrl(123)).toBe('');
+    });
+  });
+
+  describe('getExtensionsByType(type)', () => {
+    test('should return video extensions', () => {
+      const videoExts = getExtensionsByType('video');
+      expect(Array.isArray(videoExts)).toBe(true);
+      expect(videoExts).toContain('.mp4');
+      expect(videoExts).toContain('.webm');
+      expect(videoExts).toContain('.mov');
+    });
+
+    test('should return audio extensions', () => {
+      const audioExts = getExtensionsByType('audio');
+      expect(Array.isArray(audioExts)).toBe(true);
+      expect(audioExts).toContain('.mp3');
+      expect(audioExts).toContain('.aac');
+      expect(audioExts).toContain('.wav');
+    });
+
+    test('should return hls extensions', () => {
+      const hlsExts = getExtensionsByType('hls');
+      expect(Array.isArray(hlsExts)).toBe(true);
+      expect(hlsExts).toContain('.m3u8');
+      expect(hlsExts).toContain('.m3u');
+    });
+
+    test('should return dash extensions', () => {
+      const dashExts = getExtensionsByType('dash');
+      expect(Array.isArray(dashExts)).toBe(true);
+      expect(dashExts).toContain('.mpd');
+    });
+
+    test('should return stream extensions', () => {
+      const streamExts = getExtensionsByType('stream');
+      expect(Array.isArray(streamExts)).toBe(true);
+      expect(streamExts).toContain('.ts');
+      expect(streamExts).toContain('.m4s');
+    });
+
+    test('should return empty array for unknown type', () => {
+      expect(getExtensionsByType('unknown')).toEqual([]);
+      expect(getExtensionsByType('fake')).toEqual([]);
+    });
+  });
+
+  describe('isPlaylistURL(url)', () => {
+    describe('HLS playlists', () => {
+      test('.m3u8 URL should return true', () => {
+        expect(isPlaylistURL('playlist.m3u8')).toBe(true);
+        expect(isPlaylistURL('https://cdn.example.com/stream.m3u8')).toBe(true);
+      });
+
+      test('.m3u8 with query params should return true', () => {
+        expect(isPlaylistURL('playlist.m3u8?token=xyz')).toBe(true);
+      });
+
+      test('.m3u URL should return true', () => {
+        expect(isPlaylistURL('playlist.m3u')).toBe(true);
+      });
+    });
+
+    describe('DASH playlists', () => {
+      test('.mpd URL should return true', () => {
+        expect(isPlaylistURL('manifest.mpd')).toBe(true);
+        expect(isPlaylistURL('https://cdn.example.com/stream.mpd')).toBe(true);
+      });
+
+      test('.mpd with query params should return true', () => {
+        expect(isPlaylistURL('manifest.mpd?v=1')).toBe(true);
+      });
+    });
+
+    describe('non-playlist URLs', () => {
+      test('video files should return false', () => {
+        expect(isPlaylistURL('video.mp4')).toBe(false);
+        expect(isPlaylistURL('https://example.com/movie.webm')).toBe(false);
+      });
+
+      test('stream segments should return false', () => {
+        expect(isPlaylistURL('segment.ts')).toBe(false);
+        expect(isPlaylistURL('segment.m4s')).toBe(false);
+      });
+
+      test('non-media URLs should return false', () => {
+        expect(isPlaylistURL('document.pdf')).toBe(false);
+        expect(isPlaylistURL('script.js')).toBe(false);
+      });
+    });
+
+    describe('edge cases', () => {
+      test('should return false for null/undefined/empty', () => {
+        expect(isPlaylistURL(null)).toBe(false);
+        expect(isPlaylistURL(undefined)).toBe(false);
+        expect(isPlaylistURL('')).toBe(false);
+      });
+
+      test('should be case-insensitive', () => {
+        expect(isPlaylistURL('PLAYLIST.M3U8')).toBe(true);
+        expect(isPlaylistURL('MANIFEST.MPD')).toBe(true);
+      });
+    });
+  });
+
+  describe('isSimpleVideoURL(url)', () => {
+    describe('simple video files', () => {
+      test('.mp4 URL should return true', () => {
+        expect(isSimpleVideoURL('video.mp4')).toBe(true);
+        expect(isSimpleVideoURL('https://example.com/movie.mp4')).toBe(true);
+      });
+
+      test('.mp4 with query params should return true', () => {
+        expect(isSimpleVideoURL('video.mp4?token=xyz')).toBe(true);
+      });
+
+      test('.webm URL should return true', () => {
+        expect(isSimpleVideoURL('video.webm')).toBe(true);
+      });
+
+      test('.mov URL should return true', () => {
+        expect(isSimpleVideoURL('video.mov')).toBe(true);
+      });
+
+      test('.mkv URL should return true', () => {
+        expect(isSimpleVideoURL('video.mkv')).toBe(true);
+      });
+    });
+
+    describe('non-video URLs', () => {
+      test('playlists should return false', () => {
+        expect(isSimpleVideoURL('playlist.m3u8')).toBe(false);
+        expect(isSimpleVideoURL('manifest.mpd')).toBe(false);
+      });
+
+      test('stream segments should return false', () => {
+        expect(isSimpleVideoURL('segment.ts')).toBe(false);
+        expect(isSimpleVideoURL('segment.m4s')).toBe(false);
+      });
+
+      test('audio files should return false', () => {
+        expect(isSimpleVideoURL('audio.mp3')).toBe(false);
+        expect(isSimpleVideoURL('music.wav')).toBe(false);
+      });
+
+      test('non-media URLs should return false', () => {
+        expect(isSimpleVideoURL('document.pdf')).toBe(false);
+        expect(isSimpleVideoURL('index.html')).toBe(false);
+      });
+    });
+
+    describe('edge cases', () => {
+      test('should return false for null/undefined/empty', () => {
+        expect(isSimpleVideoURL(null)).toBe(false);
+        expect(isSimpleVideoURL(undefined)).toBe(false);
+        expect(isSimpleVideoURL('')).toBe(false);
+      });
+
+      test('should be case-insensitive', () => {
+        expect(isSimpleVideoURL('VIDEO.MP4')).toBe(true);
+        expect(isSimpleVideoURL('Movie.WebM')).toBe(true);
+      });
+    });
+  });
+
+  describe('isStreamSegmentURL(url)', () => {
+    describe('stream segment files', () => {
+      test('.ts (MPEG-TS) URL should return true', () => {
+        expect(isStreamSegmentURL('segment.ts')).toBe(true);
+        expect(isStreamSegmentURL('https://cdn.example.com/segment001.ts')).toBe(true);
+      });
+
+      test('.ts with query params should return true', () => {
+        expect(isStreamSegmentURL('segment.ts?token=xyz')).toBe(true);
+      });
+
+      test('.m4s (DASH segment) URL should return true', () => {
+        expect(isStreamSegmentURL('segment.m4s')).toBe(true);
+      });
+
+      test('.seg URL should return true', () => {
+        expect(isStreamSegmentURL('segment.seg')).toBe(true);
+      });
+
+      test('.f4v URL should return true', () => {
+        expect(isStreamSegmentURL('segment.f4v')).toBe(true);
+      });
+    });
+
+    describe('non-segment URLs', () => {
+      test('video files should return false', () => {
+        expect(isStreamSegmentURL('video.mp4')).toBe(false);
+        expect(isStreamSegmentURL('movie.webm')).toBe(false);
+      });
+
+      test('playlists should return false', () => {
+        expect(isStreamSegmentURL('playlist.m3u8')).toBe(false);
+        expect(isStreamSegmentURL('manifest.mpd')).toBe(false);
+      });
+
+      test('non-media URLs should return false', () => {
+        expect(isStreamSegmentURL('document.pdf')).toBe(false);
+        expect(isStreamSegmentURL('index.html')).toBe(false);
+      });
+    });
+
+    describe('edge cases', () => {
+      test('should return false for null/undefined/empty', () => {
+        expect(isStreamSegmentURL(null)).toBe(false);
+        expect(isStreamSegmentURL(undefined)).toBe(false);
+        expect(isStreamSegmentURL('')).toBe(false);
+      });
+
+      test('should be case-insensitive', () => {
+        expect(isStreamSegmentURL('SEGMENT.TS')).toBe(true);
+        expect(isStreamSegmentURL('Segment.M4S')).toBe(true);
+      });
     });
   });
 });
