@@ -40,6 +40,9 @@ export const createChromeMock = () => {
       onBeforeRequest: {
         addListener: jest.fn(),
       },
+      onHeadersReceived: {
+        addListener: jest.fn(),
+      },
       onResponseStarted: {
         addListener: jest.fn(),
       },

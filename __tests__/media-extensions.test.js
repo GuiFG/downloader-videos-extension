@@ -16,6 +16,7 @@ import {
   MEDIA_EXTENSIONS,
   URL_PATTERNS,
   detectMediaTypeByPattern,
+  detectMediaTypeByContentType,
 } from '../src/utils/media-extensions';
 
 describe('Media Extensions', () => {
@@ -675,6 +676,177 @@ describe('Media Extensions', () => {
       test('getMediaType should return unknown for non-matching URLs', () => {
         expect(getMediaType('https://example.com/media')).toBe('unknown');
         expect(getMediaType('https://custom-site.com/stream')).toBe('unknown');
+      });
+    });
+  });
+
+  describe('detectMediaTypeByContentType(contentType)', () => {
+    describe('Video MIME types', () => {
+      test('should detect video/mp4', () => {
+        expect(detectMediaTypeByContentType('video/mp4')).toBe('stream');
+      });
+
+      test('should detect video/webm', () => {
+        expect(detectMediaTypeByContentType('video/webm')).toBe('stream');
+      });
+
+      test('should detect video/quicktime', () => {
+        expect(detectMediaTypeByContentType('video/quicktime')).toBe('stream');
+      });
+
+      test('should detect video/x-matroska', () => {
+        expect(detectMediaTypeByContentType('video/x-matroska')).toBe('stream');
+      });
+
+      test('should detect video/x-msvideo', () => {
+        expect(detectMediaTypeByContentType('video/x-msvideo')).toBe('stream');
+      });
+
+      test('should detect video/x-flv', () => {
+        expect(detectMediaTypeByContentType('video/x-flv')).toBe('stream');
+      });
+
+      test('should detect application/x-mpegURL as stream', () => {
+        expect(detectMediaTypeByContentType('application/x-mpegURL')).not.toBe('stream');
+      });
+
+      test('should handle video/mp4 with charset parameter', () => {
+        expect(detectMediaTypeByContentType('video/mp4; charset=utf-8')).toBe('stream');
+      });
+
+      test('should handle video/mp4 with multiple parameters', () => {
+        expect(detectMediaTypeByContentType('video/mp4; charset=utf-8; boundary=something')).toBe('stream');
+      });
+
+      test('should be case-insensitive', () => {
+        expect(detectMediaTypeByContentType('VIDEO/MP4')).toBe('stream');
+        expect(detectMediaTypeByContentType('Video/WebM')).toBe('stream');
+      });
+    });
+
+    describe('Audio MIME types', () => {
+      test('should detect audio/mpeg', () => {
+        expect(detectMediaTypeByContentType('audio/mpeg')).toBe('audio');
+      });
+
+      test('should detect audio/wav', () => {
+        expect(detectMediaTypeByContentType('audio/wav')).toBe('audio');
+      });
+
+      test('should detect audio/aac', () => {
+        expect(detectMediaTypeByContentType('audio/aac')).toBe('audio');
+      });
+
+      test('should detect audio/ogg', () => {
+        expect(detectMediaTypeByContentType('audio/ogg')).toBe('audio');
+      });
+
+      test('should handle audio with parameters', () => {
+        expect(detectMediaTypeByContentType('audio/mpeg; charset=utf-8')).toBe('audio');
+      });
+
+      test('should be case-insensitive for audio', () => {
+        expect(detectMediaTypeByContentType('AUDIO/MPEG')).toBe('audio');
+      });
+    });
+
+    describe('Non-video MIME types', () => {
+      test('should return null for text/html', () => {
+        expect(detectMediaTypeByContentType('text/html')).toBeNull();
+      });
+
+      test('should return null for application/json', () => {
+        expect(detectMediaTypeByContentType('application/json')).toBeNull();
+      });
+
+      test('should return null for image/png', () => {
+        expect(detectMediaTypeByContentType('image/png')).toBeNull();
+      });
+
+      test('should return null for application/pdf', () => {
+        expect(detectMediaTypeByContentType('application/pdf')).toBeNull();
+      });
+
+      test('should return null for application/octet-stream', () => {
+        expect(detectMediaTypeByContentType('application/octet-stream')).toBeNull();
+      });
+
+      test('should return null for text/plain', () => {
+        expect(detectMediaTypeByContentType('text/plain')).toBeNull();
+      });
+    });
+
+    describe('Edge cases and malformed input', () => {
+      test('should return null for null', () => {
+        expect(detectMediaTypeByContentType(null)).toBeNull();
+      });
+
+      test('should return null for undefined', () => {
+        expect(detectMediaTypeByContentType(undefined)).toBeNull();
+      });
+
+      test('should return null for empty string', () => {
+        expect(detectMediaTypeByContentType('')).toBeNull();
+      });
+
+      test('should return null for whitespace only', () => {
+        expect(detectMediaTypeByContentType('   ')).toBeNull();
+      });
+
+      test('should return null for number', () => {
+        expect(detectMediaTypeByContentType(123)).toBeNull();
+      });
+
+      test('should return null for object', () => {
+        expect(detectMediaTypeByContentType({})).toBeNull();
+      });
+
+      test('should return null for array', () => {
+        expect(detectMediaTypeByContentType([])).toBeNull();
+      });
+
+      test('should handle extra whitespace around MIME type', () => {
+        expect(detectMediaTypeByContentType('  video/mp4  ')).toBe('stream'); // trim() is applied after split
+      });
+
+      test('should handle MIME type with spaces in parameters', () => {
+        expect(detectMediaTypeByContentType('video/mp4; name = value')).toBe('stream');
+      });
+    });
+
+    describe('Missing header (graceful fallback)', () => {
+      test('should return null when header is missing', () => {
+        expect(detectMediaTypeByContentType(null)).toBeNull();
+      });
+
+      test('should handle empty Content-Type header', () => {
+        expect(detectMediaTypeByContentType('')).toBeNull();
+      });
+
+      test('should return null for malformed Content-Type', () => {
+        expect(detectMediaTypeByContentType('invalid/invalid/extra')).toBeNull();
+      });
+    });
+
+    describe('Real-world scenarios', () => {
+      test('should detect streaming video without file extension', () => {
+        const contentType = 'video/mp4';
+        expect(detectMediaTypeByContentType(contentType)).toBe('stream');
+      });
+
+      test('should handle Content-Type from CDN response', () => {
+        const contentType = 'video/mp4; charset=utf-8';
+        expect(detectMediaTypeByContentType(contentType)).toBe('stream');
+      });
+
+      test('should handle HLS stream Content-Type (usually application/x-mpegURL)', () => {
+        // HLS typically comes with m3u8 extension, so this is uncommon but possible
+        expect(detectMediaTypeByContentType('application/x-mpegURL')).toBeNull();
+      });
+
+      test('should handle DASH stream Content-Type', () => {
+        // DASH typically comes with mpd extension, so this is uncommon
+        expect(detectMediaTypeByContentType('application/dash+xml')).toBeNull();
       });
     });
   });

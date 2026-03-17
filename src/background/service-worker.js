@@ -10,7 +10,7 @@
  * - Gerenciar downloads
  */
 
-import { isMediaURL, getMediaType } from '../utils/media-extensions.js';
+import { isMediaURL, getMediaType, detectMediaTypeByContentType } from '../utils/media-extensions.js';
 import { downloadFragments } from '../utils/fragment-downloader.js';
 import { parseHLS } from '../utils/hls-parser.js';
 import { parseDALE } from '../utils/dash-parser.js';
@@ -402,6 +402,52 @@ function onBeforeRequest(details) {
 }
 
 /**
+ * Handle response headers inspection
+ * @param {object} details - Request details including response headers
+ * @returns {object} Empty object (no blocking)
+ */
+function onHeadersReceived(details) {
+  const { url, tabId, responseHeaders } = details;
+
+  // Check if video already detected
+  const alreadyDetected = findVideoByNormalizedUrl(url) >= 0;
+  if (alreadyDetected) {
+    return {};
+  }
+
+  // Check Content-Type header
+  if (!responseHeaders) {
+    return {};
+  }
+
+  const contentTypeHeader = responseHeaders.find(
+    header => header.name.toLowerCase() === 'content-type'
+  );
+
+  if (!contentTypeHeader) {
+    return {};
+  }
+
+  const mediaType = detectMediaTypeByContentType(contentTypeHeader.value);
+  if (mediaType) {
+    const video = {
+      url,
+      type: mediaType,
+      tabId,
+      timestamp: Date.now(),
+      detectionMethod: 'content-type',
+    };
+    log('Video detected by Content-Type header', { url, type: mediaType, contentType: contentTypeHeader.value });
+    addVideoToCollection(video);
+    // Save and broadcast immediately
+    saveVideos();
+    broadcastUpdate({ type: 'VIDEOS_UPDATED', videos: detectedVideos });
+  }
+
+  return {};
+}
+
+/**
  * Initialize the service worker
  */
 export async function initializeServiceWorker() {
@@ -416,6 +462,13 @@ export async function initializeServiceWorker() {
     onBeforeRequest,
     { urls: ['<all_urls>'] },
     []
+  );
+
+  // Register response headers inspector for Content-Type detection
+  chrome.webRequest.onHeadersReceived.addListener(
+    onHeadersReceived,
+    { urls: ['<all_urls>'] },
+    ['responseHeaders']
   );
 
   // Register message handler

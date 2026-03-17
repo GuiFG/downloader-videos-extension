@@ -67,6 +67,31 @@ export function detectMediaTypeByPattern(url) {
 }
 
 /**
+ * Detecta o tipo de mídia baseado no header Content-Type
+ * @param {string} contentType - Valor do header Content-Type
+ * @returns {string|null} Tipo de mídia ('video', 'stream', 'audio') ou null se não for mídia
+ */
+export function detectMediaTypeByContentType(contentType) {
+  if (!contentType || typeof contentType !== 'string') return null;
+
+  // Extrai o MIME type antes de qualquer parâmetro (ex: "video/mp4; charset=utf-8")
+  const mimeType = contentType.split(';')[0].trim().toLowerCase();
+
+  // Detecta tipos de vídeo
+  if (mimeType.startsWith('video/')) {
+    // Qualquer tipo video/* é considerado uma stream detectada por header
+    return 'stream';
+  }
+
+  // Detecta tipos de áudio
+  if (mimeType.startsWith('audio/')) {
+    return 'audio';
+  }
+
+  return null;
+}
+
+/**
  * Extrai a extensão de uma URL (antes de query params ou fragmentos)
  * @param {string} url - URL a processar
  * @returns {string} Extensão em minúsculas com ponto (ex: ".mp4"), ou string vazia
@@ -176,4 +201,5 @@ export default {
   isSimpleVideoURL,
   isStreamSegmentURL,
   detectMediaTypeByPattern,
+  detectMediaTypeByContentType,
 };
