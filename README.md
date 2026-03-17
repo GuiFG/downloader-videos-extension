@@ -47,6 +47,8 @@ npm run test:coverage   # Coverage report
 
 Target: >80% coverage
 
+For comprehensive testing documentation, fixtures guide, mocks patterns, and debugging tips, see [TESTING.md](TESTING.md).
+
 ## Stack
 
 - **Build**: Webpack

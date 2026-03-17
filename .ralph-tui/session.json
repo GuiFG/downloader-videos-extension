@@ -3,10 +3,10 @@
   "sessionId": "213c00ba-3786-4a2c-b388-5fc2d20c5ce3",
   "status": "running",
   "startedAt": "2026-03-17T00:32:34.413Z",
-  "updatedAt": "2026-03-17T02:41:55.236Z",
-  "currentIteration": 7,
+  "updatedAt": "2026-03-17T02:45:54.820Z",
+  "currentIteration": 8,
   "maxIterations": 10,
-  "tasksCompleted": 7,
+  "tasksCompleted": 8,
   "isPaused": false,
   "agentPlugin": "claude",
   "trackerState": {
@@ -84,6 +84,16 @@
       "durationMs": 815591,
       "startedAt": "2026-03-17T01:58:18.172Z",
       "endedAt": "2026-03-17T02:11:53.763Z"
+    },
+    {
+      "iteration": 8,
+      "status": "completed",
+      "taskId": "US-008",
+      "taskTitle": "Audit Test Coverage (Fase 12.1)",
+      "taskCompleted": true,
+      "durationMs": 1799380,
+      "startedAt": "2026-03-17T02:11:55.841Z",
+      "endedAt": "2026-03-17T02:41:55.221Z"
     }
   ],
   "skippedTaskIds": [],

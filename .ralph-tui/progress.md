@@ -504,3 +504,89 @@ The new simple-video-download.test.js includes comprehensive tests:
 - **Content Validation Pattern**: Validate Content-Type header early before processing to fail fast on incorrect mime types
 
 ---
+
+## [2026-03-17] - US-009 (Create Testing Documentation - Fase 12.2)
+
+### What was implemented
+- Comprehensive testing documentation in TESTING.md
+- Detailed guide covering 11 test suites with 430 total tests
+- Fixtures documentation explaining all M3U8 and MPD test data
+- Mock patterns documentation for jest.setup.js, chrome-api.js, and FFmpeg mocks
+- Debugging tips and troubleshooting guide
+- 4 detailed example test case structures (unit, mock data, service worker integration, async/error handling)
+- README.md updated with link to TESTING.md
+
+### Files changed
+- **Created**: `TESTING.md` - Comprehensive testing documentation (900+ lines)
+- **Updated**: `README.md` - Added link to TESTING.md in Testing section
+
+### Acceptance Criteria Status
+✅ All acceptance criteria met:
+- ✅ Create TESTING.md with sections: how to run tests, test structure, fixtures guide, mocks patterns, debugging
+- ✅ Document each test suite: All 11 test files documented (media-extensions, hls-parser, dash-parser, fragment-downloader, ffmpeg-concatenator, download-manager, service-worker, content-script, popup, e2e, simple-video)
+- ✅ Explain fixture structure and available test data in __tests__/fixtures/
+- ✅ Explain mock patterns used in __tests__/mocks/chrome-api.js
+- ✅ Provide debugging tips: --verbose, --testNamePattern, node --inspect-brk
+- ✅ Include example test case structure with 4 detailed examples
+- ✅ Update README.md with link to TESTING.md
+- ✅ Verify documentation is clear and complete
+- ✅ Typecheck passes: ESLint clean (4 pre-existing warnings only)
+- ✅ All 430 tests continue to pass
+
+### Documentation Sections
+1. **Quick Start** - Basic commands (npm test, test:watch, test:coverage)
+2. **Running Tests** - Detailed test execution options with examples
+3. **Test Structure** - Directory layout and test file organization
+4. **Test Suites Overview** - 11 detailed sections, each documenting:
+   - Key functions tested
+   - Test categories
+   - Fixtures used (for parsers)
+   - Coverage statistics
+5. **Fixtures Guide** - Explanation of 6 M3U8 and 1 MPD test data files
+6. **Mocks Patterns** - Documentation of:
+   - Jest global setup (jest.setup.js)
+   - Chrome API mock factory (chrome-api.js)
+   - FFmpeg mock (ffmpeg.mock.js)
+   - Storage mocking patterns
+   - Fetch response simulation
+7. **Debugging Tips** - 10+ debugging techniques including:
+   - Verbose output
+   - Single test execution
+   - Test skipping/focusing
+   - Coverage analysis
+   - Node inspector debugging
+   - Console logging
+8. **Example Test Case Structure** - 4 complete examples:
+   - Basic unit test
+   - Test with mock data
+   - Service worker integration
+   - Async test with callbacks
+   - Error handling test
+9. **Coverage Report** - Current coverage statistics and file-by-file breakdown
+10. **Writing New Tests** - Checklist and common mistakes
+
+### Test Suite Summary
+- **11 test files**: 430 total tests (all passing)
+- **Coverage**: 86.72% lines, 86.59% functions, 86.36% statements, 77.64% branches (all above targets)
+- **Key modules**: Media detection, HLS parsing, DASH parsing, FFmpeg, downloads, network interception, DOM scanning, UI
+- **Integration tests**: 12 E2E tests covering complete pipeline
+- **Fixtures**: 6 HLS playlists + 1 DASH manifest for realistic test data
+
+### Learnings
+- **Documentation completeness**: Need to cover not just "what" but "why" and "how to use" for each fixture and mock pattern
+- **Example value**: Concrete examples (with actual Jest patterns and assertions) are more useful than abstract explanations
+- **Coverage metrics**: Clearly showing file-by-file coverage helps developers identify areas needing test improvements
+- **Debugging guide**: Including multiple debugging techniques (--verbose, --testNamePattern, node --inspect-brk, coverage reports) helps with troubleshooting
+- **Mock pattern patterns**: Documenting reusable patterns (storage mocking, fetch mocking) enables faster test writing
+- **Test structure importance**: Clear test file organization and test case structure makes codebase maintainable
+
+### Patterns Documented
+- **Arrange-Act-Assert Pattern**: Clear structure for test cases with setup, execution, verification
+- **Mock Reset Pattern**: Using beforeEach to reset mocks ensures test isolation
+- **Storage Mock Pattern**: Persistent mockStorageData object for realistic chrome.storage simulation
+- **Fetch Mock Pattern**: Type-based fetch mocking for HTTP response simulation
+- **Progress Callback Pattern**: Consistent {current, total, percent} format across all download types
+- **Error Handling Test Pattern**: Retry logic and error scenario testing
+- **Integration Test Pattern**: Testing complete pipeline from detection to download
+
+---
